@@ -55,6 +55,47 @@
                 </div>
             </nav>
             <main role="main" class="flex-shrink-0 pt-3 mx-3">
+                <div class="modal fade" id="modalConfirm" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h6 class="modal-title">{{ modalConfirm.title }}</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <span>{{ modalConfirm.content }}</span>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                <button type="button" id="modalConfirmOK" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="modalLineSearch" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h6 class="modal-title">加载线路</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="col-form-label">线路名称:</label>
+                                    <input type="text" class="form-control" v-model.trim="modalLineSearch.lineName" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="col-form-label">所在城市:（选填，支持城市名、行政区划代码和电话区号）</label>
+                                    <input type="text" class="form-control" v-model.trim="modalLineSearch.city" />
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                <button type="button" id="modalLineSearchOK" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile"></tab-station>
                 <tab-fare :hidden="currentTab != 'fare'"></tab-fare>
                 <tab-schematic :hidden="currentTab != 'schematic'"></tab-schematic>

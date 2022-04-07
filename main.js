@@ -30,6 +30,14 @@ const app = Vue.createApp({
             fileInput: null,
             fileReader: null,
             clipboard: new ClipboardJS('#copyLine'),
+            modalConfirm: {
+                title: '',
+                content: ''
+            },
+            modalLineSearch: {
+                lineName: '',
+                city: ''
+            },
             toast: {
                 title: '',
                 subtitle: '',
@@ -56,18 +64,16 @@ const app = Vue.createApp({
             this.currentTab = tabId;
         },
         loadLineFromReality(){
-            if(!confirm("确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。")){
-                return;
-            }
-            var lineName = prompt("线路名称：");
-            var city = prompt("线路所在城市名称或行政编码：(选填)");
+            this.showModalConfirm("读取线路", "确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。", this.showModalLineSearch);
+        },
+        loadLineFromRealitySearch(){
             var lineSearch = new AMap.LineSearch({
                 pageIndex: 1,
                 pageSize: 1,
-                city: city,
+                city: this.modalLineSearch.city,
                 extensions: "all"
             });
-            lineSearch.search(lineName, this.getLineFromRealityUp);
+            lineSearch.search(this.modalLineSearch.lineName, this.getLineFromRealityUp);
         },
         getLineFromRealityUp(status, result){
             if(status != "complete"){
@@ -148,9 +154,7 @@ const app = Vue.createApp({
             this.showMessage("读取线路", "", "成功读取文件中的线路。");
         },
         uploadLine() {
-            if(confirm("确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。")){
-                this.getFile();
-            }
+            this.showModalConfirm("读取线路", "确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。", this.getFile);
         },
         getFile() {
             if(document.createEvent) {
@@ -174,11 +178,12 @@ const app = Vue.createApp({
             this.showMessage("读取线路", "", "成功读取剪贴板中的线路。");
         },
         newLine() {
-            if(confirm("确定新建线路吗？现有线路内容将丢失。请确保已保存当前线路。")){
-                this.lineFile = deepClone(this.blankLineFile);
-                this.loadLine();
-                this.showMessage("新建线路", "", "成功新建空白线路。");
-            }
+            this.showModalConfirm("新建线路", "确定新建线路吗？现有线路内容将丢失。请确保已保存当前线路。", this.loadBlankLine);
+        },
+        loadBlankLine(){
+            this.lineFile = deepClone(this.blankLineFile);
+            this.loadLine();
+            this.showMessage("新建线路", "", "成功新建空白线路。");
         },
         downloadLine() {
             this.showMessage("保存线路", "", "已尝试保存线路到文件。如保存失败，请尝试保存到剪贴板。", false);
@@ -196,6 +201,20 @@ const app = Vue.createApp({
         pasteLine() {
             this.showMessage("读取线路", "", "已尝试从剪贴板读取线路。如读取失败，请尝试将内容保存到文件中，再从文件读取。", false);
             navigator.clipboard.readText().then(this.loadLineFromClipboard);
+        },
+        showModalConfirm(title, content, execute){
+            this.modalConfirm.title = title;
+            this.modalConfirm.content = content;
+            document.getElementById("modalConfirmOK").onclick = execute;
+            var m = new bootstrap.Modal(document.getElementById("modalConfirm"));
+            m.show();
+        },
+        showModalLineSearch(){
+            this.modalLineSearch.lineName = '';
+            this.modalLineSearch.city = '';
+            document.getElementById("modalLineSearchOK").onclick = this.loadLineFromRealitySearch;
+            var m = new bootstrap.Modal(document.getElementById("modalLineSearch"));
+            m.show();
         },
         showMessage(title, subtitle, content, autohide = true) {
             this.toast.title = title;
