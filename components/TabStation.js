@@ -33,7 +33,7 @@ app.component('tab-station', {
                 <div class="card-body" style="overflow-y:auto; overflow-x:hidden;">
                     <div class="mb-3">
                         <label class="form-label" for="lineName">线路名称</label>
-                        <input type="text" class="form-control" id="lineName" placeholder="未命名线路" v-model.trim="line.lineName"/>
+                        <input type="text" class="form-control" id="lineName" autocomplete="off" placeholder="未命名线路" v-model.trim="line.lineName"/>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="lineType">线路类型</label>
@@ -46,23 +46,23 @@ app.component('tab-station', {
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="company">运营公司</label>
-                        <input type="text" class="form-control" id="company" placeholder="填写运营公司名称" v-model.trim="line.company" />
+                        <input type="text" class="form-control" id="company" autocomplete="off" placeholder="填写运营公司名称" v-model.trim="line.company" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="company">所在地区</label>
-                        <input type="text" class="form-control" id="city" placeholder="填写城市名称或地区行政代码" v-model.trim="cityName" @change="searchCity()" />
+                        <label class="form-label" for="city">所在地区</label>
+                        <input type="text" class="form-control" id="city" autocomplete="off" placeholder="填写城市名称或地区行政代码" v-model.trim="cityName" @change="searchCity()" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="length">{{ isBilateral?"上行信息":"线路信息" }}</label>
+                        <label class="form-label" for="infoUp">{{ isBilateral?"上行信息":"线路信息" }}</label>
                         <input type="text" class="form-control" id="infoUp" placeholder="0站 / 0.0km" v-model.trim="infoUp" disabled readonly />
                     </div>
                     <div class="mb-3" v-if="isBilateral">
-                        <label class="form-label" for="length">下行信息</label>
+                        <label class="form-label" for="infoDown">下行信息</label>
                         <input type="text" class="form-control" id="infoDown" placeholder="0站 / 0.0km" v-model.trim="infoDown" disabled readonly />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="length">线路备注</label>
-                        <textarea class="form-control" rows="1" v-model.trim="line.remark"></textarea>
+                        <label class="form-label">线路备注</label>
+                        <textarea class="form-control" autocomplete="off" rows="1" v-model.trim="line.remark"></textarea>
                     </div>
                 </div>
             </div>
@@ -80,7 +80,7 @@ app.component('tab-station', {
                                     <path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/>
                                 </svg>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="8" height="16" fill="currentColor"></svg>
-                                <input v-if="renameEnabled && selectedNode == index" v-model.trim="node.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()"/>
+                                <input v-if="renameEnabled && selectedNode == index" autocomplete="off" v-model.trim="node.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()"/>
                                 <span v-else>{{ node.name }}</span>
                             </a>
                         </div>
@@ -92,7 +92,7 @@ app.component('tab-station', {
                                 <path d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
                             </svg>
                             <svg xmlns="http://www.w3.org/2000/svg" width="8" height="16" fill="currentColor"></svg>
-                            <input v-if="renameEnabled && selectedNode == station.id" v-model.trim="station.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()"/>
+                            <input v-if="renameEnabled && selectedNode == station.id" autocomplete="off" v-model.trim="station.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()"/>
                             <span v-else>{{ station.name }}</span>
                         </a>
                     </div>
@@ -445,7 +445,7 @@ app.component('tab-station', {
                 }
             }
 
-            // 添加路径点
+            // 添加节点
             this.line.route[this.trueDirection].splice(index, 0, newNode);
 
             // 设定新的选定点
