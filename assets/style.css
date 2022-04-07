@@ -1,0 +1,20 @@
+.TabStationCard1 {
+    min-height: 240px;
+    max-height: 600px;
+}
+
+.TabStationCard2 {
+    height: 600px;
+}
+
+.TabStationCard3 {
+    height: 600px;
+}
+
+.row>* {
+    padding: 0px;
+}
+
+.card-footer {
+    border-style: none;
+}
