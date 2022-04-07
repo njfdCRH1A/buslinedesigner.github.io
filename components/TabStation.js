@@ -21,11 +21,6 @@ app.component('tab-station', {
     /* HTML */
     `
     <div class="container">
-        <div class="alert alert-primary alert-dismissible d-flex align-items-center" role="alert">
-            <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:"><use xlink:href="#info-fill" /></svg>
-            <div>本应用现阶段<b>仅供测试</b>，<b>不保证功能稳定性</b>。如出现问题，请及时向BobLiu反馈。<span v-if="!chrome">为获得更好的体验，建议使用 <a href="https://google.cn/chrome/" class="alert-link" target="_blank">Chrome</a> 浏览器。</span>建了一个公测QQ频道，<a href="https://qun.qq.com/qqweb/qunpro/share?inviteCode=lM5QZ" class="alert-link" target="_blank">大家来玩呀～</a></div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
         <h1><span class="fw-normal display-5">{{ title }}</span><span class="fw-normal display-7">{{ subtitle }}</span></h1>
         <div class="row justify-content-around">
             <div class="col-12 col-md-3 card mb-3 TabStationCard1">
