@@ -388,33 +388,22 @@ app.component('tab-station', {
         // newNode
         // 新建一个节点
         newNode(lng, lat) {
-            // “自动规划”继承未完成的路径点
-            if(this.selectedMapTool == 'newStationSmart'){
-                if(this.lastSelectedWayPoint !== null){
-                    this.selectedNode = this.lastSelectedWayPoint;
-                    this.lastSelectedWayPoint = null;
-                }
-            }
-
-            // 设定节点位置
             index = this.selectedNode;
             if(this.selectedMapMode == 'after'){
                 index += 1;
             }
-
-            // 新建节点
             var newNode;
             if(this.selectedMapTool == 'watch'){
                 return;
-            }else if(this.selectedMapTool == 'newWaypoint'){ // 路径点
+            }else if(this.selectedMapTool == 'newWaypoint'){
                 newNode = {
                     'type': 'waypoint',
                     'name': '途经点 #' + this.positionId(lng, lat),
                     'lng': lng,
                     'lat': lat
-                };
-            }else{ // 站点
-                var stationSearch = new AMap.PlaceSearch({ // 搜索站名
+                }
+            }else{
+                var stationSearch = new AMap.PlaceSearch({
                     city: '全国',
                     type: '公交车站',
                     pageSize: 1,
@@ -423,16 +412,12 @@ app.component('tab-station', {
                     panel: null
                 });
                 stationSearch.searchNearBy('', [lng, lat], 200, this.autoRenameStation);
-
-                // 新增路径点
                 newNode = {
                     'type': 'station',
                     'name': '正在生成站名…',
                     'lng': lng,
                     'lat': lat
                 };
-
-                // “自动规划”算路
                 if(this.selectedMapTool == 'newStationSmart' && this.nodes.length){
                     var drivingSearch = new AMap.Driving({
                         policy: AMap.DrivingPolicy.LEAST_TIME
@@ -444,19 +429,17 @@ app.component('tab-station', {
                     );
                 }
             }
-
-            // 添加路径点
-            this.line.route[this.trueDirection].splice(index, 0, newNode);
-
-            // 设定新的选定点
+            if(this.trueDirection == 'up'){
+                this.line.route.up.splice(index, 0, newNode);
+            }else{
+                this.line.route.down.splice(index, 0, newNode);
+            }
             if(this.selectedMapMode == 'after'){
                 this.selectedNode += 1;
             }
             if(this.selectedNode < 0 || this.selectedNode >= this.nodes.length){
                 this.selectedNode = 0;
             }
-
-            //刷新地图
             this.loadMapLine(false);
         },
         // newNode => autoRenameStation
