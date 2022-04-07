@@ -214,6 +214,7 @@ app.component('tab-station', {
             selectedMapTool: 'watch',
             selectedMapMode: 'after',
             showStationsOnly: true,
+            lastSelectedWayPoint: null,
             renameEnabled: false,
             satelliteEnabled: false,
             mapEnabled: true,
@@ -523,6 +524,7 @@ app.component('tab-station', {
                 this.mapItems.infoWindow.open(this.map, position);
             }else{
                 this.selectedNode = index;
+                this.lastSelectedWayPoint = null;
             }
             if(setCenter){
                 this.map.setCenter([this.nodes[index].lng, this.nodes[index].lat]);
@@ -581,18 +583,41 @@ app.component('tab-station', {
         // setShowStationsOnly
         // 设置是否只显示站点
         setShowStationsOnly(option){
-            if(option === null){
-                option = !this.showStationsOnly;
+            if(option === null){ // 直接点击按钮切换
+                option = !this.showStationsOnly
+            }else if(option == this.showStationsOnly){ // 无须切换
+                return;
             }
+
+            if(option == true && this.nodes[this.selectedNode].type == 'waypoint'){ // 设置最后选中的路径点
+                this.lastSelectedWayPoint = this.selectedNode;
+            }else if(option == false && this.lastSelectedWayPoint !== null){ // 还原最后选中的路径点
+                this.selectedNode = this.lastSelectedWayPoint;
+            }
+
             this.showStationsOnly = option;
+
             if(this.nodes.length && option == true && this.nodes[this.selectedNode].type != 'station'){
-                this.selectedNode = this.nodes.findIndex((node, index) => {
+                var nextStation = this.nodes.findIndex((node, index) => {
                     return (index > this.selectedNode) && (node.type == 'station');
                 });
-                if(this.selectNode == -1){
-                    this.selectedNode = 0;
+                if(nextStation != -1){ // 自动选择下一个站点
+                    this.selectedNode = nextStation;
+                }else{ // 没有下一个就选上一个
+                    var nextStation = this.selectedNode;
+                    this.nodes.forEach((node, index) => {
+                        if(index < this.selectedNode && node.type == 'station'){
+                            nextStation = index;
+                        }
+                    });
+                    if(nextStation < this.selectedNode){
+                        this.selectedNode = nextStation;
+                    }else{ // 还不行就算了
+                        this.selectedNode = 0;
+                    }
                 }
             }
+
             if(option == true && this.selectedMapTool != 'watch' && this.selectedMapTool != 'newStationSmart'){
                 this.setMapTool('watch');
             }else if(option == false && this.selectedMapTool != 'newStation' && this.selectedMapTool != 'newWaypoint'){
