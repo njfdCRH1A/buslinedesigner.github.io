@@ -67,10 +67,14 @@ const app = Vue.createApp({
             this.showModalConfirm("读取线路", "确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。", this.showModalLineSearch);
         },
         loadLineFromRealitySearch(){
+            if(!this.modalLineSearch.lineName){
+                this.showMessage("读取线路", "", "读取线路失败：未填写线路名称");
+                return;
+            }
             var lineSearch = new AMap.LineSearch({
                 pageIndex: 1,
                 pageSize: 1,
-                city: this.modalLineSearch.city,
+                city: this.modalLineSearch.city || "全国",
                 extensions: "all"
             });
             lineSearch.search(this.modalLineSearch.lineName, this.getLineFromRealityUp);
