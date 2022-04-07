@@ -328,8 +328,19 @@ app.component('tab-station', {
         // deleteNodes
         // 删除上一个站点至选中节点间的所有节点（仅限智能规划模式）
         deleteNodes() {
+            this.lastSelectedWayPoint = null;
             if(this.selectedNode == 0){
-                this.nodes.splice(0, 1);
+                var nextStation = null;
+                this.nodes.forEach((node, index) => {
+                    if(index > this.selectedNode && nextStation === null && node.type == 'station'){
+                        nextStation = index;
+                    }
+                });
+                if(nextStation !== null){
+                    this.nodes.splice(0, nextStation);
+                }else{
+                    this.nodes.splice(0, 1);
+                }
             }else{
                 var lastStation = 0;
                 this.nodes.slice(0, this.selectedNode).forEach((node, index) => {
@@ -361,6 +372,7 @@ app.component('tab-station', {
         // changeNode
         // 更改节点类型（站点/途经点）
         changeNode(index) {
+            this.lastSelectedWayPoint = null;
             this.setShowStationsOnly(false);
             if(this.trueDirection == 'up'){
                 this.line.route.up[index].type == 'station'?
@@ -584,15 +596,16 @@ app.component('tab-station', {
         // 设置是否只显示站点
         setShowStationsOnly(option){
             if(option === null){ // 直接点击按钮切换
-                option = !this.showStationsOnly
+                option = !this.showStationsOnly;
             }else if(option == this.showStationsOnly){ // 无须切换
                 return;
             }
 
-            if(option == true && this.nodes[this.selectedNode].type == 'waypoint'){ // 设置最后选中的路径点
+            if(this.nodes.length && option == true && this.nodes[this.selectedNode].type == 'waypoint'){ // 设置最后选中的路径点
                 this.lastSelectedWayPoint = this.selectedNode;
             }else if(option == false && this.lastSelectedWayPoint !== null){ // 还原最后选中的路径点
                 this.selectedNode = this.lastSelectedWayPoint;
+                this.lastSelectedWayPoint = null;
             }
 
             this.showStationsOnly = option;
