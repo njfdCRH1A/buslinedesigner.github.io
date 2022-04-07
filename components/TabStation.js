@@ -21,6 +21,11 @@ app.component('tab-station', {
     /* HTML */
     `
     <div class="container">
+        <div class="alert alert-primary alert-dismissible d-flex align-items-center" role="alert" v-if="!chrome">
+            <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:"><use xlink:href="#info-fill" /></svg>
+            <div><span>为获得更好的体验，建议使用 <a href="https://google.cn/chrome/" class="alert-link" target="_blank">Chrome</a> 浏览器。</span></div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         <h1><span class="fw-normal display-5">{{ title }}</span><span class="fw-normal display-7">{{ subtitle }}</span></h1>
         <div class="row justify-content-around">
             <div class="col-12 col-md-3 card mb-3 TabStationCard1">
