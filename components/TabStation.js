@@ -870,43 +870,43 @@ app.component('tab-station', {
                 });
                 this.map.add(this.mapItems.polyline);
                 this.map.add(this.mapItems.markers);
+            }
 
-                var opposite = this.trueDirection == 'up'?'down':'up';
-                if(this.isBilateral && this.settings.showOpposite != "0" && this.line.route[opposite].length){
-                    var pathOpposite = [];
-                    this.line.route[opposite].forEach(node => {
-                        pathOpposite.push(new AMap.LngLat(node.lng, node.lat));
-                    });
-                    this.mapItems.polylineOpposite = new AMap.Polyline({
-                        path: pathOpposite,
-                        zIndex: 12,
-                        strokeWeight: 6,
-                        strokeColor: this.line.lineColor,
-                        strokeOpacity: parseFloat(this.settings.showOpposite),
-                        showDir: true,
-                        lineJoin: 'round',
-                        lineCap: 'round'
-                    });
-                    this.mapItems.polylineOpposite.on('click', this.clickPolyline, this);
-                    this.mapItems.markersOpposite = [];
-                    stationImage = this.getStationImage(this.settings.showOpposite != "1");
-                    this.line.route[opposite].forEach(node => {
-                        if(node.type == "station"){
-                            var marker = new AMap.Marker({
-                                position: new AMap.LngLat(node.lng, node.lat),
-                                zIndex: 18,
-                                offset: new AMap.Pixel(0, 0),
-                                anchor: 'center',
-                                icon: stationImage,
-                                extData: -1
-                            });
-                            marker.on('click', this.clickNode, this);
-                            this.mapItems.markersOpposite.push(marker);
-                        }
-                    });
-                    this.map.add(this.mapItems.polylineOpposite);
-                    this.map.add(this.mapItems.markersOpposite);
-                }
+            var opposite = this.trueDirection == 'up'?'down':'up';
+            if(this.isBilateral && this.settings.showOpposite != "0" && this.line.route[opposite].length){
+                var pathOpposite = [];
+                this.line.route[opposite].forEach(node => {
+                    pathOpposite.push(new AMap.LngLat(node.lng, node.lat));
+                });
+                this.mapItems.polylineOpposite = new AMap.Polyline({
+                    path: pathOpposite,
+                    zIndex: 12,
+                    strokeWeight: 6,
+                    strokeColor: this.line.lineColor,
+                    strokeOpacity: parseFloat(this.settings.showOpposite),
+                    showDir: true,
+                    lineJoin: 'round',
+                    lineCap: 'round'
+                });
+                this.mapItems.polylineOpposite.on('click', this.clickPolyline, this);
+                this.mapItems.markersOpposite = [];
+                var stationImage = this.getStationImage(this.settings.showOpposite != "1");
+                this.line.route[opposite].forEach(node => {
+                    if(node.type == "station"){
+                        var marker = new AMap.Marker({
+                            position: new AMap.LngLat(node.lng, node.lat),
+                            zIndex: 18,
+                            offset: new AMap.Pixel(0, 0),
+                            anchor: 'center',
+                            icon: stationImage,
+                            extData: -1
+                        });
+                        marker.on('click', this.clickNode, this);
+                        this.mapItems.markersOpposite.push(marker);
+                    }
+                });
+                this.map.add(this.mapItems.polylineOpposite);
+                this.map.add(this.mapItems.markersOpposite);
             }
             if(resetCenter){
                 this.map.setFitView()
