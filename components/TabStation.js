@@ -807,6 +807,7 @@ app.component('tab-station', {
             this.selectedDirection = "up";
             this.renameEnabled = false;
             this.$nextTick(() => {
+                document.getElementById('lineColor').jscolor.fromString(this.line.lineColor);
                 this.loadMapLine(true);
             });
         },
