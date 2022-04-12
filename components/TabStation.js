@@ -304,8 +304,10 @@ app.component('tab-station', {
                 polylineOpposite: null,
                 markers: [],
                 markersOpposite: [],
+                texts: [],
                 infowindow: null,
-                satelliteLayer: null
+                satelliteLayer: null,
+                labelLayer: null
             },
             settings: {
                 showStationName: "0",
@@ -334,11 +336,22 @@ app.component('tab-station', {
                     features: ['bg', 'road', 'point'],
                     defaultCursor: 'move'
                 });
+
+                this.mapItems.satelliteLayer = new AMap.TileLayer.Satellite();
+                this.mapItems.labelLayer = new AMap.LabelsLayer({
+                    zooms: [3, 20],
+                    zIndex: 1000,
+                    visible: true,
+                    collision: true,
+                    animation: true,
+                });
+                
+                this.map.add(this.mapItems.labelLayer);
                 this.map.on('click', function(e) {
                     this.clickPoint(e.lnglat.getLng(), e.lnglat.getLat());
                 }, this);
+
                 this.loadMapLine(true);
-                this.satelliteLayer = new AMap.TileLayer.Satellite();
                 this.map.resize();
                 this.chrome = AMap.Browser.chrome; // Browser check
             }).catch((e)=>{
@@ -750,9 +763,9 @@ app.component('tab-station', {
         // 设置是否显示卫星图层
         setSatelliteLayer() {
             if(this.satelliteEnabled) {
-                this.map.remove(this.satelliteLayer);
+                this.map.remove(this.mapItems.satelliteLayer);
             } else {
-                this.map.add(this.satelliteLayer);
+                this.map.add(this.mapItems.satelliteLayer);
             }
             this.satelliteEnabled = !this.satelliteEnabled;
         },
@@ -807,7 +820,7 @@ app.component('tab-station', {
             this.selectedDirection = "up";
             this.renameEnabled = false;
             this.$nextTick(() => {
-                document.getElementById('lineColor').jscolor.fromString(this.line.lineColor);
+                document.getElementById('lineColor').jscolor.fromString(this.line.lineColor || "#00D3FC");
                 this.loadMapLine(true);
             });
         },
@@ -820,6 +833,7 @@ app.component('tab-station', {
                 this.map.remove(this.mapItems.markers);
                 this.map.remove(this.mapItems.polylineOpposite);
                 this.map.remove(this.mapItems.markersOpposite);
+                this.mapItems.labelLayer.remove(this.mapItems.texts);
                 this.mapItems.infowindow.close();
             } catch(e) {}
             if(this.nodes.length){
@@ -839,11 +853,12 @@ app.component('tab-station', {
                 });
                 this.mapItems.polyline.on('click', this.clickPolyline, this);
                 this.mapItems.markers = [];
+                this.mapItems.texts = [];
                 var stationImage = this.getStationImage();
                 this.stations.forEach((station) => {
                     var marker = new AMap.Marker({
                         position: new AMap.LngLat(station.lng, station.lat),
-                        zIndex: 20,
+                        zIndex: 18,
                         offset: new AMap.Pixel(0, 0),
                         anchor: 'center',
                         icon: stationImage,
@@ -851,26 +866,37 @@ app.component('tab-station', {
                     });
                     marker.on('click', this.clickNode, this);
                     this.mapItems.markers.push(marker);
+
                     if(this.settings.showStationName != "0"){
-                        var text = new AMap.Text({
-                            text: station.name,
+                        var text = new AMap.LabelMarker({
+                            name: station.name,
                             position: new AMap.LngLat(station.lng, station.lat),
-                            zIndex: 21,
-                            offset: new AMap.Pixel(4, -2),
-                            anchor: 'bottom-left',
-                            clickable: false,
-                            style: {
-                                'padding': '0',
-                                'border': '0',
-                                'background-color': 'transparent',
-                                'font-size': '8px'
+                            zIndex: 20,
+                            rank: 1,
+                            text: {
+                                content: station.name,
+                                direction: 'right',
+                                offset: [0, -12],
+                                style: {
+                                    fontSize: 12,
+                                    fontWeight: 'normal',
+                                    fillColor: 'black',
+                                    strokeColor: 'white',
+                                    strokeWidth: 4
+                                }
                             }
                         });
-                        this.mapItems.markers.push(text);
+                        this.mapItems.texts.push(text);
                     }
                 });
+                if(this.mapItems.texts.length){
+                    this.mapItems.texts[this.mapItems.texts.length - 1].setRank(2);
+                    this.mapItems.texts[0].setRank(3);
+                }
+
                 this.map.add(this.mapItems.polyline);
                 this.map.add(this.mapItems.markers);
+                this.mapItems.labelLayer.add(this.mapItems.texts);
             }
 
             var opposite = this.trueDirection == 'up'?'down':'up';
@@ -881,7 +907,7 @@ app.component('tab-station', {
                 });
                 this.mapItems.polylineOpposite = new AMap.Polyline({
                     path: pathOpposite,
-                    zIndex: 12,
+                    zIndex: 10,
                     strokeWeight: 6,
                     strokeColor: this.line.lineColor,
                     strokeOpacity: parseFloat(this.settings.showOpposite),
@@ -896,7 +922,7 @@ app.component('tab-station', {
                     if(node.type == "station"){
                         var marker = new AMap.Marker({
                             position: new AMap.LngLat(node.lng, node.lat),
-                            zIndex: 18,
+                            zIndex: 12,
                             offset: new AMap.Pixel(0, 0),
                             anchor: 'center',
                             icon: stationImage,
@@ -998,53 +1024,59 @@ app.component('tab-station', {
             return this.line.lineName.length?this.line.lineName:'未命名线路';
         },
         subtitle() {
-            var startStation, endStation;
+            var startStationName, endStationName;
             var routeUp = this.line.route.up;
             var routeDown = this.line.route.down;
-
+        
             // 获取上行起讫站
             if(routeUp.length){
-                startStation = routeUp.find((node) => {
+                var startStation = routeUp.find((node) => {
                     return node.type == "station"
-                }).name;
+                });
+                if(startStation){
+                    startStationName = startStation.name;
+                }
                 if(this.isRingLine) {
-                    endStation = startStation;
+                    endStationName = startStationName;
                 } else {
                     routeUp.forEach(node => {
                         if(node.type == "station"){
-                            endStation = node.name;
+                            endStationName = node.name;
                         }
                     });
                 }
             }
-
+        
             // 获取下行起讫站，如果和上行不同就在上行的起讫站后面加括号
             if(this.isBilateral && routeDown.length){
+                var startStationNameDown, endStationNameDown;
                 var startStationDown = routeDown.find((node) => {
                     return node.type == "station"
-                }).name;
-                var endStationDown;
+                });
+                if(startStationDown){
+                    startStationNameDown = startStationDown.name;
+                }
                 if(this.isRingLine) {
-                    endStationDown = startStationDown;
+                    endStationNameDown = startStationNameDown;
                 } else {
                     routeDown.forEach(node => {
                         if(node.type == "station"){
-                            endStationDown = node.name;
+                            endStationNameDown = node.name;
                         }
                     });
                 }
-
-                if(startStationDown != endStation){
-                    endStation = endStation + ' / ' + startStationDown;
+        
+                if(startStationNameDown != endStationName){
+                    endStationName = endStationName + ' / ' + startStationNameDown;
                 }
-                if(endStationDown != startStation){
-                    startStation = startStation + ' / ' + endStationDown;
+                if(endStationNameDown != startStationName){
+                    startStationName = startStationName + ' / ' + endStationNameDown;
                 }
             }
-
+        
             // 返回结果
-            if(startStation && endStation){
-                return ('\u2002' + startStation + (this.isBilateral?" ⇌ ":" ⇀ ") + endStation);
+            if(startStationName && endStationName){
+                return ('\u2002' + startStationName + (this.isBilateral?" ⇌ ":" ⇀ ") + endStationName);
             }
         },
         isBilateral() {
