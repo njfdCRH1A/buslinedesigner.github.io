@@ -26,6 +26,73 @@ app.component('tab-station', {
     /* HTML */
     `
     <div class="container" id="tabStation">
+        <div class="modal fade" id="modalMapSettings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h6 class="modal-title">地图设置</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="col-form-label">在地图上显示站名</label>
+                            <br />
+                            <div class="btn-group" role="group">
+                                <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { loadMapLine(false); });">
+                                    <option selected value="0">不显示</option>
+                                    <option value="1">显示</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="col-form-label">显示线路反向</label>
+                            <br />
+                            <div class="btn-group" role="group">
+                                <select class="form-select" id="showOpposite" v-model.number="settings.showOpposite" @change="$nextTick(() => { loadMapLine(false); });">
+                                    <option selected value="0">不显示</option>
+                                    <option value="0.4">半透明显示</option>
+                                    <option value="1">不透明显示</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="col-form-label">地图风格</label>
+                            <br />
+                            <div class="btn-group" role="group">
+                                <select class="form-select" id="mapStyle" v-model="settings.mapStyle" @change="$nextTick(() => { map.setMapStyle(settings.mapStyle); });">
+                                    <option selected value="amap://styles/normal">默认</option>
+                                    <option value="amap://styles/macaron">马卡龙</option>
+                                    <option value="amap://styles/fresh">草色青</option>
+                                    <option value="amap://styles/whitesmoke">远山黛</option>
+                                    <option value="amap://styles/light">月光银</option>
+                                    <option value="amap://styles/blue">靛青蓝</option>
+                                    <option value="amap://styles/darkblue">极夜蓝</option>
+                                    <option value="amap://styles/grey">雅土灰</option>
+                                    <option value="amap://styles/dark">幻影黑</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="col-form-label">站点颜色明度</label>
+                            <br />
+                            <div class="btn-group" role="group">
+                                <select class="form-select" id="stationLightness" v-model="settings.stationLightness" @change="$nextTick(() => { loadMapLine(false); });">
+                                    <option selected value="-64">暗</option>
+                                    <option value="-32">较暗</option>
+                                    <option value="0">不变</option>
+                                    <option value="32">较亮</option>
+                                    <option value="64">亮</option>
+                                    <option value="origin">原版</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="alert alert-primary alert-dismissible d-flex align-items-center" role="alert" v-if="!chrome">
             <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:"><use xlink:href="#info-fill" /></svg>
             <div><span>为获得更好的体验，建议使用 <a href="https://google.cn/chrome/" class="alert-link" target="_blank">Chrome</a> 浏览器。</span></div>
@@ -67,7 +134,7 @@ app.component('tab-station', {
                     </div>
                     <div class="mb-3">
                     <label class="form-label" for="lineColor">线路颜色</label>
-                        <input type="text" class="form-control" id="lineColor" autocomplete="off" v-model.trim="line.lineColor" data-jscolor="{}" @change="$nextTick(() => {loadMapLine(false);});" />
+                        <input type="text" class="form-control" id="lineColor" autocomplete="off" v-model.trim="line.lineColor" data-jscolor="{}" @change="$nextTick(() => { loadMapLine(false); });" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">线路备注</label>
@@ -174,6 +241,11 @@ app.component('tab-station', {
                                 <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/>
                             </svg>
                         </button>
+                        <button type="button" class="btn btn-outline-primary" @click="showMapSettings()" title="地图设置">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear-wide-connected" viewBox="0 0 16 16">
+                                <path d="M7.068.727c.243-.97 1.62-.97 1.864 0l.071.286a.96.96 0 0 0 1.622.434l.205-.211c.695-.719 1.888-.03 1.613.931l-.08.284a.96.96 0 0 0 1.187 1.187l.283-.081c.96-.275 1.65.918.931 1.613l-.211.205a.96.96 0 0 0 .434 1.622l.286.071c.97.243.97 1.62 0 1.864l-.286.071a.96.96 0 0 0-.434 1.622l.211.205c.719.695.03 1.888-.931 1.613l-.284-.08a.96.96 0 0 0-1.187 1.187l.081.283c.275.96-.918 1.65-1.613.931l-.205-.211a.96.96 0 0 0-1.622.434l-.071.286c-.243.97-1.62.97-1.864 0l-.071-.286a.96.96 0 0 0-1.622-.434l-.205.211c-.695.719-1.888.03-1.613-.931l.08-.284a.96.96 0 0 0-1.186-1.187l-.284.081c-.96.275-1.65-.918-.931-1.613l.211-.205a.96.96 0 0 0-.434-1.622l-.286-.071c-.97-.243-.97-1.62 0-1.864l.286-.071a.96.96 0 0 0 .434-1.622l-.211-.205c-.719-.695-.03-1.888.931-1.613l.284.08a.96.96 0 0 0 1.187-1.186l-.081-.284c-.275-.96.918-1.65 1.613-.931l.205.211a.96.96 0 0 0 1.622-.434l.071-.286zM12.973 8.5H8.25l-2.834 3.779A4.998 4.998 0 0 0 12.973 8.5zm0-1a4.998 4.998 0 0 0-7.557-3.779l2.834 3.78h4.723zM5.048 3.967c-.03.021-.058.043-.087.065l.087-.065zm-.431.355A4.984 4.984 0 0 0 3.002 8c0 1.455.622 2.765 1.615 3.678L7.375 8 4.617 4.322zm.344 7.646.087.065-.087-.065z"/>
+                            </svg>
+                        </button>
                     </div>
                     <div class="btn-group btn-group-sm pull-right" role="group" style="float: right">
                         <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'watch' }" @click="setMapTool('watch')" title="看图模式 [1]">
@@ -229,9 +301,17 @@ app.component('tab-station', {
             mapEnabled: true,
             mapItems: {
                 polyline: null,
+                polylineOpposite: null,
                 markers: [],
+                markersOpposite: [],
                 infowindow: null,
                 satelliteLayer: null
+            },
+            settings: {
+                showStationName: "0",
+                showOpposite: "0",
+                mapStyle: "amap://styles/normal",
+                stationLightness: -64
             },
             chrome: true
         }
@@ -312,7 +392,9 @@ app.component('tab-station', {
         // clickNode
         // 在地图上点击一个节点
         clickNode(e) {
-            if(this.selectedMapTool == 'watch'){
+            if(e.target.getExtData() < 0){
+                this.clickPoint(e.lnglat.lng, e.lnglat.lat);
+            }else if(this.selectedMapTool == 'watch'){
                 this.selectedNode = e.target.getExtData();
                 this.selectNode(this.selectedNode);
             }else{
@@ -735,6 +817,8 @@ app.component('tab-station', {
             try {
                 this.map.remove(this.mapItems.polyline);
                 this.map.remove(this.mapItems.markers);
+                this.map.remove(this.mapItems.polylineOpposite);
+                this.map.remove(this.mapItems.markersOpposite);
                 this.mapItems.infowindow.close();
             } catch(e) {}
             if(this.nodes.length){
@@ -754,24 +838,86 @@ app.component('tab-station', {
                 });
                 this.mapItems.polyline.on('click', this.clickPolyline, this);
                 this.mapItems.markers = [];
+                var stationImage = this.getStationImage();
                 this.stations.forEach((station) => {
                     var marker = new AMap.Marker({
                         position: new AMap.LngLat(station.lng, station.lat),
                         zIndex: 20,
                         offset: new AMap.Pixel(0, 0),
                         anchor: 'center',
-                        icon: './assets/station.png',
-                        extData: station.id
+                        icon: stationImage,
+                        extData: station.id,
                     });
                     marker.on('click', this.clickNode, this);
                     this.mapItems.markers.push(marker);
+                    if(this.settings.showStationName != "0"){
+                        var text = new AMap.Text({
+                            text: station.name,
+                            position: new AMap.LngLat(station.lng, station.lat),
+                            zIndex: 21,
+                            offset: new AMap.Pixel(4, -2),
+                            anchor: 'bottom-left',
+                            clickable: false,
+                            style: {
+                                'padding': '0',
+                                'border': '0',
+                                'background-color': 'transparent',
+                                'font-size': '8px'
+                            }
+                        });
+                        this.mapItems.markers.push(text);
+                    }
                 });
                 this.map.add(this.mapItems.polyline);
                 this.map.add(this.mapItems.markers);
+
+                if(this.isBilateral && this.settings.showOpposite != "0" && this.line.route.up.length && this.line.route.down.length){
+                    var opposite = this.trueDirection == 'up'?'down':'up';
+                    var pathOpposite = [];
+                    this.line.route[opposite].forEach(node => {
+                        pathOpposite.push(new AMap.LngLat(node.lng, node.lat));
+                    });
+                    this.mapItems.polylineOpposite = new AMap.Polyline({
+                        path: pathOpposite,
+                        zIndex: 12,
+                        strokeWeight: 6,
+                        strokeColor: this.line.lineColor,
+                        strokeOpacity: parseFloat(this.settings.showOpposite),
+                        showDir: true,
+                        lineJoin: 'round',
+                        lineCap: 'round'
+                    });
+                    this.mapItems.polylineOpposite.on('click', this.clickPolyline, this);
+                    this.mapItems.markersOpposite = [];
+                    stationImage = this.getStationImage(this.settings.showOpposite != "1");
+                    this.line.route[opposite].forEach(node => {
+                        if(node.type == "station"){
+                            var marker = new AMap.Marker({
+                                position: new AMap.LngLat(node.lng, node.lat),
+                                zIndex: 18,
+                                offset: new AMap.Pixel(0, 0),
+                                anchor: 'center',
+                                icon: stationImage,
+                                extData: -1
+                            });
+                            marker.on('click', this.clickNode, this);
+                            this.mapItems.markersOpposite.push(marker);
+                        }
+                    });
+                    this.map.add(this.mapItems.polylineOpposite);
+                    this.map.add(this.mapItems.markersOpposite);
+                }
             }
             if(resetCenter){
                 this.map.setFitView()
             }
+        },
+
+        // showMapSettings
+        // 显示地图设置Modal
+        showMapSettings(){
+            var m = new bootstrap.Modal(document.getElementById("modalMapSettings"));
+            m.show();
         },
 
         // positionId
@@ -781,8 +927,38 @@ app.component('tab-station', {
             return ('00000000' + Math.abs(CRC32C.str('(' + lng + ',' + lat + ')')).toString(16).toUpperCase()).slice(-8);
         },
 
+        // getStationImage
+        // 根据颜色生成站点svg的 Data URL
+        getStationImage(opacity = false){
+            if(this.settings.stationLightness == "origin"){
+                return './assets/station.png';
+            }else{
+                var prefix = "data:image/svg+xml;base64,";
+                var color = this.colorLightness(this.line.lineColor, parseInt(this.settings.stationLightness));
+                var svg = "<svg xmlns='http://www.w3.org/2000/svg' version='2' width='12' height='12'><circle cx='6' cy='6' r='5' stroke='"
+                    + color + "' stroke-width='2' " + (opacity?"stroke-opacity='0.4' ":"") + "fill='white' /></svg>";
+                return prefix + window.btoa(svg);
+            }
+        },
+        // colorLightness
+        // 调整颜色明度
+        colorLightness(col, amt) {
+            col = col.slice(1);
+            var num = parseInt(col, 16);
+            var r = (num >> 16) + amt;
+            if (r > 255) r = 255;
+            else if (r < 0) r = 0;
+            var g = ((num >> 8) & 0x00FF) + amt;
+            if (g > 255) g = 255;
+            else if (g < 0) g = 0;
+            var b = (num & 0x0000FF) + amt;
+            if (b > 255) b = 255;
+            else if (b < 0) b = 0;
+            return "#" + ('000000' + (b | (g << 8) | (r << 16)).toString(16)).slice(-6);
+        },
+
         // hotKey
-        // 快捷键设置
+        // 地图快捷键
         hotKey(event){
             var e = event || window.event || arguments.callee.caller.arguments[0];
             if(!e){ return; }
