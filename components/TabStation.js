@@ -871,8 +871,8 @@ app.component('tab-station', {
                 this.map.add(this.mapItems.polyline);
                 this.map.add(this.mapItems.markers);
 
-                if(this.isBilateral && this.settings.showOpposite != "0" && this.line.route.up.length && this.line.route.down.length){
-                    var opposite = this.trueDirection == 'up'?'down':'up';
+                var opposite = this.trueDirection == 'up'?'down':'up';
+                if(this.isBilateral && this.settings.showOpposite != "0" && this.line.route[opposite].length){
                     var pathOpposite = [];
                     this.line.route[opposite].forEach(node => {
                         pathOpposite.push(new AMap.LngLat(node.lng, node.lat));
