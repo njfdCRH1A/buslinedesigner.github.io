@@ -829,11 +829,21 @@ app.component('tab-station', {
         // 在地图上重新绘制线路
         loadMapLine(resetCenter = true){
             try {
-                this.map.remove(this.mapItems.polyline);
-                this.map.remove(this.mapItems.markers);
-                this.map.remove(this.mapItems.polylineOpposite);
-                this.map.remove(this.mapItems.markersOpposite);
-                this.mapItems.labelLayer.remove(this.mapItems.texts);
+                if(this.mapItems.polyline){
+                    this.map.remove(this.mapItems.polyline);
+                }
+                if(this.mapItems.markers.length){
+                    this.map.remove(this.mapItems.markers);
+                }
+                if(this.mapItems.texts.length){
+                    this.mapItems.labelLayer.remove(this.mapItems.texts);
+                }
+                if(this.mapItems.polylineOpposite){
+                    this.map.remove(this.mapItems.polylineOpposite);
+                }
+                if(this.mapItems.markersOpposite.length){
+                    this.map.remove(this.mapItems.markersOpposite);
+                }
                 this.mapItems.infowindow.close();
             } catch(e) {}
             if(this.nodes.length){
