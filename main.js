@@ -4,6 +4,7 @@ const app = Vue.createApp({
             "fileVersion": 1,
             "cityName": "",
             "lineName": "",
+            "lineColor": "#00D3FC",
             "remark": "",
             "lineType": 1,
             "company": "",
