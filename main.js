@@ -63,6 +63,7 @@ const app = Vue.createApp({
     methods: {
         setTab(tabId) {
             this.currentTab = tabId;
+            this.loadLine();
         },
         loadLineFromReality(){
             this.showModalConfirm("读取线路", "确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。", this.showModalLineSearch);

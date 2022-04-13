@@ -33,58 +33,46 @@ app.component('tab-station', {
                         <h6 class="modal-title">地图设置</h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body form-control" style="border: 0px;">
                         <div class="mb-3">
-                            <label class="col-form-label">在地图上显示站名</label>
-                            <br />
-                            <div class="btn-group" role="group">
-                                <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { loadMapLine(false); });">
-                                    <option selected value="0">不显示</option>
-                                    <option value="1">显示</option>
-                                </select>
-                            </div>
+                            <label class="form-label">在地图上显示站名</label>
+                            <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { loadMapLine(false); });">
+                                <option selected value="0">不显示</option>
+                                <option value="1">显示</option>
+                            </select>
                         </div>
                         <div class="mb-3">
-                            <label class="col-form-label">显示线路反向</label>
-                            <br />
-                            <div class="btn-group" role="group">
-                                <select class="form-select" id="showOpposite" v-model.number="settings.showOpposite" @change="$nextTick(() => { loadMapLine(false); });">
-                                    <option selected value="0">不显示</option>
-                                    <option value="0.4">半透明显示</option>
-                                    <option value="1">不透明显示</option>
-                                </select>
-                            </div>
+                            <label class="form-label">显示线路反向</label>
+                            <select class="form-select" id="showOpposite" v-model.number="settings.showOpposite" @change="$nextTick(() => { loadMapLine(false); });">
+                                <option selected value="0">不显示</option>
+                                <option value="0.4">半透明显示</option>
+                                <option value="1">不透明显示</option>
+                            </select>
                         </div>
                         <div class="mb-3">
-                            <label class="col-form-label">地图风格</label>
-                            <br />
-                            <div class="btn-group" role="group">
-                                <select class="form-select" id="mapStyle" v-model="settings.mapStyle" @change="$nextTick(() => { map.setMapStyle(settings.mapStyle); });">
-                                    <option selected value="amap://styles/normal">默认</option>
-                                    <option value="amap://styles/macaron">马卡龙</option>
-                                    <option value="amap://styles/fresh">草色青</option>
-                                    <option value="amap://styles/whitesmoke">远山黛</option>
-                                    <option value="amap://styles/light">月光银</option>
-                                    <option value="amap://styles/blue">靛青蓝</option>
-                                    <option value="amap://styles/darkblue">极夜蓝</option>
-                                    <option value="amap://styles/grey">雅土灰</option>
-                                    <option value="amap://styles/dark">幻影黑</option>
-                                </select>
-                            </div>
+                            <label class="form-label">地图风格</label>
+                            <select class="form-select" id="mapStyle" v-model="settings.mapStyle" @change="$nextTick(() => { map.setMapStyle(settings.mapStyle); });">
+                                <option selected value="amap://styles/normal">默认</option>
+                                <option value="amap://styles/macaron">马卡龙</option>
+                                <option value="amap://styles/fresh">草色青</option>
+                                <option value="amap://styles/whitesmoke">远山黛</option>
+                                <option value="amap://styles/light">月光银</option>
+                                <option value="amap://styles/blue">靛青蓝</option>
+                                <option value="amap://styles/darkblue">极夜蓝</option>
+                                <option value="amap://styles/grey">雅土灰</option>
+                                <option value="amap://styles/dark">幻影黑</option>
+                            </select>
                         </div>
                         <div class="mb-3">
-                            <label class="col-form-label">站点颜色明度</label>
-                            <br />
-                            <div class="btn-group" role="group">
-                                <select class="form-select" id="stationLightness" v-model="settings.stationLightness" @change="$nextTick(() => { loadMapLine(false); });">
-                                    <option selected value="-64">暗</option>
-                                    <option value="-32">较暗</option>
-                                    <option value="0">不变</option>
-                                    <option value="32">较亮</option>
-                                    <option value="64">亮</option>
-                                    <option value="origin">原版</option>
-                                </select>
-                            </div>
+                            <label class="form-label">站点颜色明度</label>
+                            <select class="form-select" id="stationLightness" v-model="settings.stationLightness" @change="$nextTick(() => { loadMapLine(false); });">
+                                <option selected value="-64">暗</option>
+                                <option value="-32">较暗</option>
+                                <option value="0">不变</option>
+                                <option value="32">较亮</option>
+                                <option value="64">亮</option>
+                                <option value="origin">原版</option>
+                            </select>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -214,7 +202,7 @@ app.component('tab-station', {
                 </div>
             </div>
             <div class="col-12 col-md-5 card mb-3 TabStationCard3" id="mapPanel">
-	            <div class="card-header" @click="loadMapLine(true); map.resize()">
+	            <div class="card-header" @click="loadMapLine(true, true);">
                     <span>线路走向</span>
                 </div>
 	            <div class="card-body" id="amap"></div>
@@ -572,6 +560,10 @@ app.component('tab-station', {
             } else {
                 this.nodes[this.selectedNode].name = '新站点 #'+ this.positionId(this.nodes[this.selectedNode].lng, this.nodes[this.selectedNode].lat);
             }
+
+            if(this.settings.showStationName){
+                this.loadMapLine(false);
+            }
         },
         // newNode => autoSetRouteAhead
         // 新建节点后自动规划上一节点至当前站路径并搜索至下一节点路径（仅限自动设站模式）
@@ -821,13 +813,13 @@ app.component('tab-station', {
             this.renameEnabled = false;
             this.$nextTick(() => {
                 document.getElementById('lineColor').jscolor.fromString(this.line.lineColor || "#00D3FC");
-                this.loadMapLine(true);
+                this.loadMapLine(true, true);
             });
         },
 
         // loadMapLine
         // 在地图上重新绘制线路
-        loadMapLine(resetCenter = true){
+        loadMapLine(resetCenter = true, resizeMap = false){
             try {
                 if(this.mapItems.polyline){
                     this.map.remove(this.mapItems.polyline);
@@ -944,6 +936,9 @@ app.component('tab-station', {
                 });
                 this.map.add(this.mapItems.polylineOpposite);
                 this.map.add(this.mapItems.markersOpposite);
+            }
+            if(resizeMap){
+                this.map.resize();
             }
             if(resetCenter){
                 this.map.setFitView()
