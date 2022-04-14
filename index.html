@@ -47,7 +47,7 @@
                                     <li><a class="dropdown-item" href="javascript: void(0)" id="copyLine" :data-clipboard-text="JSON.stringify(lineFile)">保存线路至剪贴板</a></li>
                                     <li><a class="dropdown-item" href="javascript: void(0)" @click="uploadLine()">从文件读取线路</a></li>
                                     <li><a class="dropdown-item" href="javascript: void(0)" @click="pasteLine()">从剪贴板读取线路</a></li>
-                                    <li><a class="dropdown-item" href="javascript: void(0)" @click="loadLineFromReality()">读取现有线路</a></li>
+                                    <li><a class="dropdown-item" href="javascript: void(0)" @click="loadLineFromReality()">读取现存线路</a></li>
                                 </ul>
                             </li>
                             <li v-for="tab in tabs" class="nav-item"><a class="nav-link" :class="{ 'active': currentTab == tab.id }" @click="setTab(tab.id)" href="#">{{ tab.name }}</a></li>
@@ -97,7 +97,7 @@
                         </div>
                     </div>
                 </div>
-                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" version="1.2.4"></tab-station>
+                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" version="1.2.5"></tab-station>
                 <tab-fare :hidden="currentTab != 'fare'"></tab-fare>
                 <tab-schematic :hidden="currentTab != 'schematic'"></tab-schematic>
                 <tab-about :hidden="currentTab != 'about'"></tab-about>
@@ -114,7 +114,7 @@
             </main>
             <footer class="footer mt-auto py-3 bg-light">
                 <div class="container">
-                    <span class="text-muted font-monospace">Version 1.2.4 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
+                    <span class="text-muted font-monospace">Version 1.2.5 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
                 </div>
             </footer>
         </div>

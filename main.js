@@ -52,6 +52,7 @@ const app = Vue.createApp({
             var e = window.event || e;
             e.returnValue = ("确定离开页面吗？现有线路内容将丢失。请确保已保存当前线路。");
         };
+
         this.clipboard.on('success', this.copyLine);
         this.clipboard.on('error', this.copyLineFailed);
         this.fileInput = document.createElement('input');
@@ -236,6 +237,6 @@ const app = Vue.createApp({
             pom.setAttribute('href', URL.createObjectURL(blob));
             pom.setAttribute('download', filename);
             pom.click();
-        },
+        }
     }
 })

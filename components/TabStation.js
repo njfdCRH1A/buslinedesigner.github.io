@@ -45,16 +45,17 @@ app.component('tab-station', {
                     <div class="modal-body form-control" style="border: 0px;">
                         <div class="mb-3">
                             <label class="form-label">在地图上显示站名</label>
-                            <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { loadMapLine(false); });">
-                                <option selected value="0">不显示</option>
-                                <option value="1">显示</option>
+                            <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { mapItems.labelLayer.setCollision(parseInt(settings.showStationName)); loadMapLine(false); });">
+                                <option value="0">不显示</option>
+                                <option selected value="1">智能显示 (防碰撞)</option>
+                                <option value="0.5">全部显示</option>
                             </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">显示线路反向</label>
                             <select class="form-select" id="showOpposite" v-model.number="settings.showOpposite" @change="$nextTick(() => { loadMapLine(false); });">
-                                <option selected value="0">不显示</option>
-                                <option value="0.4">半透明显示</option>
+                                <option value="0">不显示</option>
+                                <option selected value="0.4">半透明显示</option>
                                 <option value="1">不透明显示</option>
                             </select>
                         </div>
@@ -286,7 +287,7 @@ app.component('tab-station', {
     `,
     data() {
         return {
-            componentVersion: '1.2.4',
+            componentVersion: '1.2.5',
             cityName: '',
             selectedDirection: 'up',
             selectedNode: 0,
@@ -298,18 +299,19 @@ app.component('tab-station', {
             satelliteEnabled: false,
             mapEnabled: true,
             mapItems: {
-                polyline: null,
-                polylineOpposite: null,
-                markers: [],
-                markersOpposite: [],
-                texts: [],
-                infowindow: null,
-                satelliteLayer: null,
-                labelLayer: null
+                polyline: VueReactivity.shallowRef(null),
+                polylineOpposite: VueReactivity.shallowRef(null),
+                markers: VueReactivity.shallowRef([]),
+                markersOpposite: VueReactivity.shallowRef([]),
+                texts: VueReactivity.shallowRef([]),
+                textsOpposite: VueReactivity.shallowRef([]),
+                infowindow: VueReactivity.shallowRef(null),
+                satelliteLayer: VueReactivity.shallowRef(null),
+                labelLayer: VueReactivity.shallowRef(null)
             },
             settings: {
-                showStationName: "0",
-                showOpposite: "0",
+                showStationName: "1",
+                showOpposite: "0.4",
                 mapStyle: "amap://styles/normal",
                 stationLightness: -64
             },
@@ -335,7 +337,6 @@ app.component('tab-station', {
                     defaultCursor: 'move'
                 });
 
-                this.mapItems.satelliteLayer = new AMap.TileLayer.Satellite();
                 this.mapItems.labelLayer = new AMap.LabelsLayer({
                     zooms: [3, 20],
                     zIndex: 1000,
@@ -766,7 +767,9 @@ app.component('tab-station', {
         setSatelliteLayer() {
             if(this.satelliteEnabled) {
                 this.map.remove(this.mapItems.satelliteLayer);
+                this.mapItems.satelliteLayer = null;
             } else {
+                this.mapItems.satelliteLayer = new AMap.TileLayer.Satellite();
                 this.map.add(this.mapItems.satelliteLayer);
             }
             this.satelliteEnabled = !this.satelliteEnabled;
@@ -833,20 +836,31 @@ app.component('tab-station', {
             try {
                 if(this.mapItems.polyline){
                     this.map.remove(this.mapItems.polyline);
+                    this.mapItems.polyline = null;
                 }
                 if(this.mapItems.markers.length){
                     this.map.remove(this.mapItems.markers);
+                    this.mapItems.markers = [];
                 }
                 if(this.mapItems.texts.length){
                     this.mapItems.labelLayer.remove(this.mapItems.texts);
+                    this.mapItems.texts = [];
                 }
                 if(this.mapItems.polylineOpposite){
                     this.map.remove(this.mapItems.polylineOpposite);
+                    this.mapItems.polylineOpposite = null;
                 }
                 if(this.mapItems.markersOpposite.length){
                     this.map.remove(this.mapItems.markersOpposite);
+                    this.mapItems.markersOpposite = [];
                 }
-                this.mapItems.infowindow.close();
+                if(this.mapItems.textsOpposite.length){
+                    this.mapItems.labelLayer.remove(this.mapItems.textsOpposite);
+                    this.mapItems.textsOpposite = [];
+                }
+                if(this.mapItems.infoWindow){
+                    this.mapItems.infoWindow.close();
+                }
             } catch(e) {}
             if(this.nodes.length){
                 var path = [];
@@ -864,8 +878,6 @@ app.component('tab-station', {
                     lineCap: 'round'
                 });
                 this.mapItems.polyline.on('click', this.clickPolyline, this);
-                this.mapItems.markers = [];
-                this.mapItems.texts = [];
                 var stationImage = this.getStationImage();
                 this.stations.forEach((station) => {
                     var marker = new AMap.Marker({
@@ -880,15 +892,16 @@ app.component('tab-station', {
                     this.mapItems.markers.push(marker);
 
                     if(this.settings.showStationName != "0"){
+                        var position = this.roadNamePosition(this.trueDirection, station.id);
                         var text = new AMap.LabelMarker({
                             name: station.name,
                             position: new AMap.LngLat(station.lng, station.lat),
                             zIndex: 20,
-                            rank: 1,
+                            rank: 2,
                             text: {
                                 content: station.name,
-                                direction: 'right',
-                                offset: [0, -12],
+                                direction: position.direc,
+                                offset: position.offset,
                                 style: {
                                     fontSize: 12,
                                     fontWeight: 'normal',
@@ -902,8 +915,8 @@ app.component('tab-station', {
                     }
                 });
                 if(this.mapItems.texts.length){
-                    this.mapItems.texts[this.mapItems.texts.length - 1].setRank(2);
-                    this.mapItems.texts[0].setRank(3);
+                    this.mapItems.texts[this.mapItems.texts.length - 1].setRank(4);
+                    this.mapItems.texts[0].setRank(5);
                 }
 
                 this.map.add(this.mapItems.polyline);
@@ -928,13 +941,12 @@ app.component('tab-station', {
                     lineCap: 'round'
                 });
                 this.mapItems.polylineOpposite.on('click', this.clickPolyline, this);
-                this.mapItems.markersOpposite = [];
                 var stationImage = this.getStationImage(this.settings.showOpposite != "1");
-                this.line.route[opposite].forEach(node => {
+                this.line.route[opposite].forEach((node, index) => {
                     if(node.type == "station"){
                         var marker = new AMap.Marker({
                             position: new AMap.LngLat(node.lng, node.lat),
-                            zIndex: 12,
+                            zIndex: 11,
                             offset: new AMap.Pixel(0, 0),
                             anchor: 'center',
                             icon: stationImage,
@@ -942,10 +954,35 @@ app.component('tab-station', {
                         });
                         marker.on('click', this.clickNode, this);
                         this.mapItems.markersOpposite.push(marker);
+
+                        if(this.settings.showStationName != "0"){
+                            var position = this.roadNamePosition(opposite, index);
+                            var text = new AMap.LabelMarker({
+                                name: node.name,
+                                position: new AMap.LngLat(node.lng, node.lat),
+                                zIndex: 20,
+                                rank: 1,
+                                opacity: parseFloat(this.settings.showOpposite),
+                                text: {
+                                    content: node.name,
+                                    direction: position.direc,
+                                    offset: position.offset,
+                                    style: {
+                                        fontSize: 12,
+                                        fontWeight: 'normal',
+                                        fillColor: 'black',
+                                        strokeColor: 'white',
+                                        strokeWidth: 4
+                                    }
+                                }
+                            });
+                            this.mapItems.textsOpposite.push(text);
+                        }
                     }
                 });
                 this.map.add(this.mapItems.polylineOpposite);
                 this.map.add(this.mapItems.markersOpposite);
+                this.mapItems.labelLayer.add(this.mapItems.textsOpposite);
             }
             if(resizeMap){
                 this.map.resize();
@@ -997,6 +1034,17 @@ app.component('tab-station', {
             if (b > 255) b = 255;
             else if (b < 0) b = 0;
             return "#" + ('000000' + (b | (g << 8) | (r << 16)).toString(16)).slice(-6);
+        },
+
+        // roadNamePosition
+        // 计算路名应该出现的位置
+        roadNamePosition(direction, index){
+            var position = {
+                direc: 'right',
+                offset: [0, -12]
+            };
+
+            return position;
         },
 
         // hotKey
