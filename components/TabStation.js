@@ -24,12 +24,19 @@ app.component('tab-station', {
                 "BLD 版本号: " + this.version + "，组件版本号：" + this.componentVersion);
         }
 
-        this.mapInit();
-        document.getElementById('amap').onkeydown = this.hotKey;
         jscolor.presets.default = {
             format: 'hex',
             previewSize: 40
         };
+        $cookies.config(Infinity);
+        if($cookies.isKey("stationSettings")){
+            this.settings = $cookies.get("stationSettings");
+        }else{
+            $cookies.set("stationSettings", this.settings);
+        }
+
+        this.mapInit();
+        document.getElementById('amap').onkeydown = this.hotKey;
     },
     template:
     /* HTML */
@@ -39,13 +46,13 @@ app.component('tab-station', {
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h6 class="modal-title">地图设置</h6>
+                        <h6 class="modal-title">设置</h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body form-control" style="border: 0px;">
                         <div class="mb-3">
                             <label class="form-label">在地图上显示站名</label>
-                            <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { mapItems.labelLayer.setCollision(parseInt(settings.showStationName)); loadMapLine(false); });">
+                            <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { mapItems.labelsLayer.setCollision(parseInt(settings.showStationName)); loadMapLine(false); setCookies(); });">
                                 <option value="0">不显示</option>
                                 <option selected value="1">智能显示 (防碰撞)</option>
                                 <option value="0.5">全部显示</option>
@@ -53,7 +60,7 @@ app.component('tab-station', {
                         </div>
                         <div class="mb-3">
                             <label class="form-label">显示线路反向</label>
-                            <select class="form-select" id="showOpposite" v-model.number="settings.showOpposite" @change="$nextTick(() => { loadMapLine(false); });">
+                            <select class="form-select" id="showOpposite" v-model.number="settings.showOpposite" @change="$nextTick(() => { loadMapLine(false); setCookies(); });">
                                 <option value="0">不显示</option>
                                 <option selected value="0.4">半透明显示</option>
                                 <option value="1">不透明显示</option>
@@ -61,7 +68,7 @@ app.component('tab-station', {
                         </div>
                         <div class="mb-3">
                             <label class="form-label">地图风格</label>
-                            <select class="form-select" id="mapStyle" v-model="settings.mapStyle" @change="$nextTick(() => { map.setMapStyle(settings.mapStyle); });">
+                            <select class="form-select" id="mapStyle" v-model="settings.mapStyle" @change="$nextTick(() => { map.setMapStyle(settings.mapStyle); setCookies(); });">
                                 <option selected value="amap://styles/normal">默认</option>
                                 <option value="amap://styles/macaron">马卡龙</option>
                                 <option value="amap://styles/fresh">草色青</option>
@@ -75,7 +82,7 @@ app.component('tab-station', {
                         </div>
                         <div class="mb-3">
                             <label class="form-label">站点颜色明度</label>
-                            <select class="form-select" id="stationLightness" v-model="settings.stationLightness" @change="$nextTick(() => { loadMapLine(false); });">
+                            <select class="form-select" id="stationLightness" v-model="settings.stationLightness" @change="$nextTick(() => { loadMapLine(false); setCookies(); });">
                                 <option selected value="-64">暗</option>
                                 <option value="-32">较暗</option>
                                 <option value="0">不变</option>
@@ -84,8 +91,16 @@ app.component('tab-station', {
                                 <option value="origin">原版</option>
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">正方向</label>
+                            <select class="form-select" id="stationLightness" v-model="settings.mainDirection" @change="$nextTick(() => { setCookies(); });">
+                                <option selected value="0">上行</option>
+                                <option value="1">下行</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-primary" @click="resetSettings()">复原</button>
                         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
                     </div>
                 </div>
@@ -107,7 +122,7 @@ app.component('tab-station', {
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="lineType">线路类型</label>
-                        <select class="form-select" id="lineType" v-model.number="line.lineType">
+                        <select class="form-select" id="lineType" v-model.number="line.lineType" @change="checkDirection()">
                             <option selected value="1">双向线路</option>
                             <option value="2">单向线路</option>
                             <option value="3">双向环线</option>
@@ -123,11 +138,11 @@ app.component('tab-station', {
                         <input type="text" class="form-control" id="city" autocomplete="off" placeholder="填写城市名称或地区行政代码" v-model.trim="cityName" @change="searchCity()" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="infoUp">{{ isBilateral?"上行信息":"线路信息" }}</label>
+                        <label class="form-label" for="infoUp">{{ isBilateral?(settings.mainDirection!="1"?"上行信息":"下行信息"):"线路信息" }}</label>
                         <input type="text" class="form-control" id="infoUp" placeholder="0站 / 0.0km" v-model.trim="infoUp" disabled readonly />
                     </div>
                     <div class="mb-3" v-if="isBilateral">
-                        <label class="form-label" for="infoDown">下行信息</label>
+                        <label class="form-label" for="infoDown">{{ settings.mainDirection!="1"?"下行信息":"上行信息" }}</label>
                         <input type="text" class="form-control" id="infoDown" placeholder="0站 / 0.0km" v-model.trim="infoDown" disabled readonly />
                     </div>
                     <div class="mb-3">
@@ -174,8 +189,8 @@ app.component('tab-station', {
                 </div>
                 <div class="card-footer">
                     <div class="btn-group btn-group-sm pull-right" role="group" style="float:left" :hidden="!isBilateral">
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'up' }" @click="setDirection('up')">上行</button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'down' }" @click="setDirection('down')">下行</button>
+                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'up' }" @click="setDirection('up')">{{ settings.mainDirection!="1"?"上行":"下行" }}</button>
+                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'down' }" @click="setDirection('down')">{{ settings.mainDirection!="1"?"下行":"上行" }}</button>
                     </div>
                     <div class="btn-group btn-group-sm pull-right" role="group" style="float:right">
                         <button type="button" class="btn btn-outline-primary" :class="{ active: showStationsOnly }" title="只显示站点" @click="setShowStationsOnly(null)">
@@ -239,7 +254,7 @@ app.component('tab-station', {
                                 <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/>
                             </svg>
                         </button>
-                        <button type="button" class="btn btn-outline-primary" @click="showMapSettings()" title="地图设置">
+                        <button type="button" class="btn btn-outline-primary" @click="showMapSettings()" title="设置">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear-wide-connected" viewBox="0 0 16 16">
                                 <path d="M7.068.727c.243-.97 1.62-.97 1.864 0l.071.286a.96.96 0 0 0 1.622.434l.205-.211c.695-.719 1.888-.03 1.613.931l-.08.284a.96.96 0 0 0 1.187 1.187l.283-.081c.96-.275 1.65.918.931 1.613l-.211.205a.96.96 0 0 0 .434 1.622l.286.071c.97.243.97 1.62 0 1.864l-.286.071a.96.96 0 0 0-.434 1.622l.211.205c.719.695.03 1.888-.931 1.613l-.284-.08a.96.96 0 0 0-1.187 1.187l.081.283c.275.96-.918 1.65-1.613.931l-.205-.211a.96.96 0 0 0-1.622.434l-.071.286c-.243.97-1.62.97-1.864 0l-.071-.286a.96.96 0 0 0-1.622-.434l-.205.211c-.695.719-1.888.03-1.613-.931l.08-.284a.96.96 0 0 0-1.186-1.187l-.284.081c-.96.275-1.65-.918-.931-1.613l.211-.205a.96.96 0 0 0-.434-1.622l-.286-.071c-.97-.243-.97-1.62 0-1.864l.286-.071a.96.96 0 0 0 .434-1.622l-.211-.205c-.719-.695-.03-1.888.931-1.613l.284.08a.96.96 0 0 0 1.187-1.186l-.081-.284c-.275-.96.918-1.65 1.613-.931l.205.211a.96.96 0 0 0 1.622-.434l.071-.286zM12.973 8.5H8.25l-2.834 3.779A4.998 4.998 0 0 0 12.973 8.5zm0-1a4.998 4.998 0 0 0-7.557-3.779l2.834 3.78h4.723zM5.048 3.967c-.03.021-.058.043-.087.065l.087-.065zm-.431.355A4.984 4.984 0 0 0 3.002 8c0 1.455.622 2.765 1.615 3.678L7.375 8 4.617 4.322zm.344 7.646.087.065-.087-.065z"/>
                             </svg>
@@ -287,7 +302,7 @@ app.component('tab-station', {
     `,
     data() {
         return {
-            componentVersion: '1.2.5',
+            componentVersion: '1.2.6',
             cityName: '',
             selectedDirection: 'up',
             selectedNode: 0,
@@ -307,13 +322,14 @@ app.component('tab-station', {
                 textsOpposite: VueReactivity.shallowRef([]),
                 infowindow: VueReactivity.shallowRef(null),
                 satelliteLayer: VueReactivity.shallowRef(null),
-                labelLayer: VueReactivity.shallowRef(null)
+                labelsLayer: VueReactivity.shallowRef(null)
             },
             settings: {
                 showStationName: "1",
                 showOpposite: "0.4",
                 mapStyle: "amap://styles/normal",
-                stationLightness: -64
+                stationLightness: -64,
+                mainDirection: 0
             },
             chrome: true
         }
@@ -334,18 +350,19 @@ app.component('tab-station', {
                     isHotspot: false,
                     resizeEnable: true,
                     features: ['bg', 'road', 'point'],
-                    defaultCursor: 'move'
+                    defaultCursor: 'move',
+                    mapStyle: this.settings.mapStyle
                 });
 
-                this.mapItems.labelLayer = new AMap.LabelsLayer({
+                this.mapItems.labelsLayer = new AMap.LabelsLayer({
                     zooms: [3, 20],
-                    zIndex: 1000,
+                    zIndex: 120,
                     visible: true,
-                    collision: true,
+                    collision: parseInt(this.settings.showStationName),
                     animation: true,
                 });
                 
-                this.map.add(this.mapItems.labelLayer);
+                this.map.add(this.mapItems.labelsLayer);
                 this.map.on('click', function(e) {
                     this.clickPoint(e.lnglat.getLng(), e.lnglat.getLat());
                 }, this);
@@ -663,6 +680,9 @@ app.component('tab-station', {
                 this.selectedNode = index;
                 this.lastSelectedWayPoint = null;
             }
+            if(this.renameEnabled){
+                this.loadMapLine(false);
+            }
             if(setCenter){
                 this.map.setCenter([this.nodes[index].lng, this.nodes[index].lat]);
             }
@@ -767,6 +787,7 @@ app.component('tab-station', {
         setSatelliteLayer() {
             if(this.satelliteEnabled) {
                 this.map.remove(this.mapItems.satelliteLayer);
+                this.mapItems.satelliteLayer.destroy();
                 this.mapItems.satelliteLayer = null;
             } else {
                 this.mapItems.satelliteLayer = new AMap.TileLayer.Satellite();
@@ -790,6 +811,7 @@ app.component('tab-station', {
             e = e?e:event;
             if(e.keyCode == 13) {
                 this.renameEnabled = false;
+                this.loadMapLine(false);
             }
         },
 
@@ -824,6 +846,7 @@ app.component('tab-station', {
             this.selectedNode = 0;
             this.selectedDirection = "up";
             this.renameEnabled = false;
+            this.cityName = this.line.cityName;
             this.$nextTick(() => {
                 document.getElementById('lineColor').jscolor.fromString(this.line.lineColor || "#00D3FC");
                 this.loadMapLine(true, true);
@@ -843,7 +866,7 @@ app.component('tab-station', {
                     this.mapItems.markers = [];
                 }
                 if(this.mapItems.texts.length){
-                    this.mapItems.labelLayer.remove(this.mapItems.texts);
+                    this.mapItems.labelsLayer.remove(this.mapItems.texts);
                     this.mapItems.texts = [];
                 }
                 if(this.mapItems.polylineOpposite){
@@ -855,7 +878,7 @@ app.component('tab-station', {
                     this.mapItems.markersOpposite = [];
                 }
                 if(this.mapItems.textsOpposite.length){
-                    this.mapItems.labelLayer.remove(this.mapItems.textsOpposite);
+                    this.mapItems.labelsLayer.remove(this.mapItems.textsOpposite);
                     this.mapItems.textsOpposite = [];
                 }
                 if(this.mapItems.infoWindow){
@@ -921,7 +944,7 @@ app.component('tab-station', {
 
                 this.map.add(this.mapItems.polyline);
                 this.map.add(this.mapItems.markers);
-                this.mapItems.labelLayer.add(this.mapItems.texts);
+                this.mapItems.labelsLayer.add(this.mapItems.texts);
             }
 
             var opposite = this.trueDirection == 'up'?'down':'up';
@@ -982,7 +1005,7 @@ app.component('tab-station', {
                 });
                 this.map.add(this.mapItems.polylineOpposite);
                 this.map.add(this.mapItems.markersOpposite);
-                this.mapItems.labelLayer.add(this.mapItems.textsOpposite);
+                this.mapItems.labelsLayer.add(this.mapItems.textsOpposite);
             }
             if(resizeMap){
                 this.map.resize();
@@ -990,6 +1013,17 @@ app.component('tab-station', {
             if(resetCenter){
                 this.map.setFitView()
             }
+        },
+
+        // checkDirection
+        // 切换为单向线路时选择正确的方向
+        checkDirection(){
+            this.$nextTick(() => {
+                if(!this.isBilateral && this.line.route.up.length == 0){
+                    [this.line.route.up, this.line.route.down] = [this.line.route.down, this.line.route.up];
+                }
+                this.loadMapLine(false);
+            });
         },
 
         // showMapSettings
@@ -1045,6 +1079,28 @@ app.component('tab-station', {
             };
 
             return position;
+        },
+
+        // setCookies
+        // 保存设置到 cookie
+        setCookies(){
+            $cookies.set("stationSettings", this.settings);
+        },
+        // resetSettings
+        // 复原设置
+        resetSettings(){
+            this.settings = {
+                showStationName: "1",
+                showOpposite: "0.4",
+                mapStyle: "amap://styles/normal",
+                stationLightness: -64,
+                mainDirection: 0
+            };
+            
+            this.mapItems.labelsLayer.setCollision(parseInt(this.settings.showStationName));
+            this.map.setMapStyle(this.settings.mapStyle);
+            this.setCookies();
+            this.loadMapLine(false);
         },
 
         // hotKey
@@ -1128,12 +1184,18 @@ app.component('tab-station', {
                         }
                     });
                 }
-        
-                if(startStationNameDown != endStationName){
+
+                if(endStationName && startStationNameDown != endStationName){
                     endStationName = endStationName + ' / ' + startStationNameDown;
                 }
-                if(endStationNameDown != startStationName){
+                if(startStationName && endStationNameDown != startStationName){
                     startStationName = startStationName + ' / ' + endStationNameDown;
+                }
+                if(!startStationName){
+                    startStationName = endStationNameDown;
+                }
+                if(!endStationName){
+                    endStationName = startStationNameDown;
                 }
             }
         

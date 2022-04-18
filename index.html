@@ -14,6 +14,7 @@
         <script src="tools/crc32c.js"></script>
         <script src="tools/deepclone.js"></script>
         <script src="tools/clipboard.min.js"></script>
+        <script src="tools/vue-cookies.js"></script>
         <script src="tools/jscolor.min.js"></script>
         <script src="amapConfig.js"></script>
         <script src="https://webapi.amap.com/loader.js"></script>
@@ -97,7 +98,7 @@
                         </div>
                     </div>
                 </div>
-                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" version="1.2.5"></tab-station>
+                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" version="1.2.6"></tab-station>
                 <tab-fare :hidden="currentTab != 'fare'"></tab-fare>
                 <tab-schematic :hidden="currentTab != 'schematic'"></tab-schematic>
                 <tab-about :hidden="currentTab != 'about'"></tab-about>
@@ -114,7 +115,7 @@
             </main>
             <footer class="footer mt-auto py-3 bg-light">
                 <div class="container">
-                    <span class="text-muted font-monospace">Version 1.2.5 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
+                    <span class="text-muted font-monospace">Version 1.2.6 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
                 </div>
             </footer>
         </div>

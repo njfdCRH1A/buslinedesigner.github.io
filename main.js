@@ -89,6 +89,11 @@ const app = Vue.createApp({
             }else{
                 this.lineFile = deepClone(this.blankLineFile);
                 var line = result.lineInfo[0];
+                var districtSearch = new AMap.DistrictSearch({
+                    level: 'city',
+                    subdistrict: 0
+                })
+                districtSearch.search(line.citycode, this.getLineFromRealityCitySearch);
 
                 this.lineFile.lineName = line.name.replace(/\(.*\)$/, '').replace("内环", "").replace("外环", "").replace("内圈", "").replace("外圈", "");
                 this.lineFile.company = line.company;
@@ -121,6 +126,12 @@ const app = Vue.createApp({
                 this.loadLine();
                 this.showMessage("读取线路", "", "成功读取现有线路内容。");
                 return;
+            }
+        },
+        getLineFromRealityCitySearch(status, result){
+            if(status == "complete"){
+                this.lineFile.cityName = result.districtList[0].name;
+                this.loadLine();
             }
         },
         setStationFromReality(direction, path, stations){
@@ -180,7 +191,12 @@ const app = Vue.createApp({
             this.fileReader.readAsText(this.fileInput.files[0]);
         },
         loadLineFromClipboard(line){
-            this.lineFile = deepClone(JSON.parse(line));
+            try{
+                this.lineFile = deepClone(JSON.parse(line));
+            }catch(e){
+                this.showMessage("读取线路", "", "读取线路失败！" + e, false);
+                return;
+            }
             this.loadLine();
             this.showMessage("读取线路", "", "成功读取剪贴板中的线路。");
         },
@@ -206,6 +222,9 @@ const app = Vue.createApp({
             this.showMessage('保存线路', '', '线路信息保存失败，请手动复制：<br />'.JSON.stringify(lineFile));
         },
         pasteLine() {
+            this.showModalConfirm("读取线路", "确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。", this.getLineFromClipboard);
+        },
+        getLineFromClipboard(){
             this.showMessage("读取线路", "", "已尝试从剪贴板读取线路。如读取失败，请尝试将内容保存到文件中，再从文件读取。", false);
             navigator.clipboard.readText().then(this.loadLineFromClipboard);
         },
