@@ -363,7 +363,7 @@ app.component('tab-station', {
     `,
     data() {
         return {
-            componentVersion: '1.3.0',
+            componentVersion: '1.3.1',
             cityName: '',
             selectedDirection: 'up',
             selectedNode: 0,
@@ -891,8 +891,8 @@ app.component('tab-station', {
             if(!this.renameEnabled){
                 this.saveOriginal();
             }
-            renameEnabled = !renameEnabled;
-            loadMapLine(false);
+            this.renameEnabled = !this.renameEnabled;
+            this.loadMapLine(false);
         },
         // renameKeyPress
         // 重命名模式开启时，按下回车完成重命名（退出重命名模式）
