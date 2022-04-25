@@ -248,6 +248,9 @@ const app = Vue.createApp({
             this.showMessage("读取线路", "", "已尝试从剪贴板读取线路。如读取失败，请尝试将内容保存到文件中，再从文件读取。", false);
             navigator.clipboard.readText().then(this.loadLineFromClipboard);
         },
+        showModalConfirmForComponents(data){
+            this.showModalConfirm(data.title, data.content, data.execute);
+        },
         showModalConfirm(title, content, execute){
             this.modalConfirm.title = title;
             this.modalConfirm.content = content;

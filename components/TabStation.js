@@ -46,7 +46,7 @@ app.component('tab-station', {
     `
     <div class="container" id="tabStation">
         <div class="modal fade" id="modalMapSettings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h6 class="modal-title">设置</h6>
@@ -104,21 +104,21 @@ app.component('tab-station', {
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">线路宽度</label>
-                                <input type="number" class="form-control" v-model.number="settings.lineStrokeWidth" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
+                                <input type="number" class="form-control" min="1" max="30" v-model.number="settings.lineStrokeWidth" oninput="if(value>30){value=30;}else if(value<1){value=1;}" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-3" v-if="settings.stationLightness!='origin'">
                                 <label class="form-label">站点大小</label>
-                                <input type="number" class="form-control" v-model.number="settings.stationFillRadius" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
+                                <input type="number" class="form-control" min="1" max="20" v-model.number="settings.stationFillRadius" oninput="if(value>20){value=20;}else if(value<1){value=1;}" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">站点宽度</label>
-                                <input type="number" class="form-control" v-model.number="settings.stationStrokeWidth" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
+                            <div class="mb-3" v-if="settings.stationLightness!='origin'">
+                                <label class="form-label">站点描边宽度</label>
+                                <input type="number" class="form-control" min="1" max="10" v-model.number="settings.stationStrokeWidth" oninput="if(value>10){value=10;}else if(value<1){value=1;}" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#advancedSettings" aria-expanded="false" aria-controls="collapseExample">高级</button>
-                        <button type="button" class="btn btn-outline-primary" @click="resetSettings()">复原</button>
+                        <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal" @click="$emit('confirm', {'title':'复原地图设置', 'content': '确认复原地图设置吗？', 'execute': resetSettings})">复原</button>
                         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
                     </div>
                 </div>
@@ -133,7 +133,7 @@ app.component('tab-station', {
                     </div>
                     <div class="modal-body form-control" style="border: 0px; padding: 0px; overflow-y:auto; overflow-x:hidden;">
                         <div class="list-group list-group-flush">
-                            <li v-if="!mapItems.lineMap.length" class="list-group-item list-group-item-action">点击“添加”即可将当前线路添加至线网中</li>
+                            <li v-if="!mapItems.lineMap.length" class="list-group-item list-group-item-action">点击“添加当前线路”即可将当前线路添加至线网中</li>
                             <li v-for="(lineMapLine, index) in mapItems.lineMap" class="list-group-item list-group-item-action d-flex align-content-center justify-content-between">
                                 <span class="align-self-center">{{ lineMapLine.lineName }}</span>
                                 <div class="btn-group btn-group-sm pull-right" role="group">
@@ -241,7 +241,7 @@ app.component('tab-station', {
                     <div class="btn-group btn-group-sm pull-right" role="group" style="float:left" :hidden="!isBilateral">
                         <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'up' }" @click="setDirection('up')">{{ settings.mainDirection!="1"?"上行":"下行" }}</button>
                         <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'down' }" @click="setDirection('down')">{{ settings.mainDirection!="1"?"下行":"上行" }}</button>
-                        <button type="button" class="btn btn-outline-primary" title="翻转上下行" @click="[line.route.up, line.route.down] = [line.route.down, line.route.up]; loadMapLine(false);">
+                        <button type="button" class="btn btn-outline-primary" title="反转上下行" @click="$emit('confirm', {'title':'反转上下行', 'content': '确认反转上下行吗？', 'execute': reverseDirection});">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shuffle" viewBox="0 0 16 16">
                                 <path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3v1c-1.798 0-3.173 1.01-4.126 2.082A9.624 9.624 0 0 0 7.556 8a9.624 9.624 0 0 0 1.317 1.918C9.828 10.99 11.204 12 13 12v1c-2.202 0-3.827-1.24-4.874-2.418A10.595 10.595 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13H.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.624 9.624 0 0 0 6.444 8a9.624 9.624 0 0 0-1.317-1.918C4.172 5.01 2.796 4 1 4H.5a.5.5 0 0 1-.5-.5z"/>
                                 <path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192zm0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192z"/>
@@ -295,8 +295,8 @@ app.component('tab-station', {
                             </svg>
                         </button>
                         <button type="button" class="btn btn-outline-primary" :class="{ active: mapEnabled }" @click="setMapLayer()" title="地图图层">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
-                                <path d="M372.350001 0v279.259092h240.629159A139.984074 139.984074 0 0 1 698.147729 194.090523V0h93.090909v194.13143a139.970438 139.970438 0 0 1 85.168569 85.182204h147.53825v93.090909H876.3663a140.065888 140.065888 0 0 1-85.086755 85.127662v54.542791A232.720455 232.720455 0 0 1 568.6086 744.509102l-10.104053 0.231806H457.477662a139.99771 139.99771 0 0 1-85.086754 85.127662v194.13143h-93.131816V829.86857a139.970438 139.970438 0 0 1-85.127662-85.182204H0v-93.077274h194.090523a140.011345 140.011345 0 0 1 85.168569-85.182204V372.350001H0V279.259092h279.259092V0z m-46.552273 651.609092A46.538637 46.538637 0 1 0 372.336365 698.147729a46.525001 46.525001 0 0 0-46.538637-46.538637z m287.222339-279.259091h-240.670066v194.13143a139.984074 139.984074 0 0 1 85.168568 85.168568h100.999614a139.643181 139.643181 0 0 0 139.397739-131.448127l0.231807-8.181418v-54.501885a140.024981 140.024981 0 0 1-85.127662-85.168568z m131.666299-93.090909a46.552272 46.552272 0 1 0 46.538636 46.538636 46.552272 46.552272 0 0 0-46.538636-46.538636z"></path>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-map" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M15.817.113A.5.5 0 0 1 16 .5v14a.5.5 0 0 1-.402.49l-5 1a.502.502 0 0 1-.196 0L5.5 15.01l-4.902.98A.5.5 0 0 1 0 15.5v-14a.5.5 0 0 1 .402-.49l5-1a.5.5 0 0 1 .196 0L10.5.99l4.902-.98a.5.5 0 0 1 .415.103zM10 1.91l-4-.8v12.98l4 .8V1.91zm1 12.98 4-.8V1.11l-4 .8v12.98zm-6-.8V1.11l-4 .8v12.98l4-.8z"/>
                             </svg>
                         </button>
                         <button type="button" class="btn btn-outline-primary" @click="elementFullScreen('mapPanel')" title="面板全屏">
@@ -316,8 +316,8 @@ app.component('tab-station', {
                             </svg>
                         </button>
                         <button type="button" class="btn btn-outline-primary" @click="showLineMap()" title="线网">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-list-ul" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm-3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
+                                <path d="M372.350001 0v279.259092h240.629159A139.984074 139.984074 0 0 1 698.147729 194.090523V0h93.090909v194.13143a139.970438 139.970438 0 0 1 85.168569 85.182204h147.53825v93.090909H876.3663a140.065888 140.065888 0 0 1-85.086755 85.127662v54.542791A232.720455 232.720455 0 0 1 568.6086 744.509102l-10.104053 0.231806H457.477662a139.99771 139.99771 0 0 1-85.086754 85.127662v194.13143h-93.131816V829.86857a139.970438 139.970438 0 0 1-85.127662-85.182204H0v-93.077274h194.090523a140.011345 140.011345 0 0 1 85.168569-85.182204V372.350001H0V279.259092h279.259092V0z m-46.552273 651.609092A46.538637 46.538637 0 1 0 372.336365 698.147729a46.525001 46.525001 0 0 0-46.538637-46.538637z m287.222339-279.259091h-240.670066v194.13143a139.984074 139.984074 0 0 1 85.168568 85.168568h100.999614a139.643181 139.643181 0 0 0 139.397739-131.448127l0.231807-8.181418v-54.501885a140.024981 140.024981 0 0 1-85.127662-85.168568z m131.666299-93.090909a46.552272 46.552272 0 1 0 46.538636 46.538636 46.552272 46.552272 0 0 0-46.538636-46.538636z"></path>
                             </svg>
                         </button>
                     </div>
@@ -363,7 +363,7 @@ app.component('tab-station', {
     `,
     data() {
         return {
-            componentVersion: '1.3.1',
+            componentVersion: '1.3.2',
             cityName: '',
             selectedDirection: 'up',
             selectedNode: 0,
@@ -901,6 +901,12 @@ app.component('tab-station', {
             if(e.keyCode == 13) {
                 this.setRenameMode();
             }
+        },
+        // reverseDirection
+        // 反转上下行
+        reverseDirection(){
+            [this.line.route.up, this.line.route.down] = [this.line.route.down, this.line.route.up];
+            this.loadMapLine(false);
         },
 
         // searchCity
