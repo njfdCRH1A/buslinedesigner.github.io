@@ -12,7 +12,9 @@ const app = Vue.createApp({
                 "up": [],
                 "down": []
             },
-            "fare": {}
+            "fare": {
+                "strategy": "multi-level"
+            }
         };
         return{
             blankLineFile,
@@ -28,8 +30,10 @@ const app = Vue.createApp({
                 {id: 'about', name: '关于'}
             ],
             lineFile: deepClone(this.blankLineFile),
-            fileInput: null,
-            fileReader: null,
+            originalLineFile: deepClone(this.blankLineFile),
+            undoable: false,
+            fileInput: VueReactivity.shallowRef(null),
+            fileReader: VueReactivity.shallowRef(null),
             clipboard: new ClipboardJS('#copyLine'),
             modalConfirm: {
                 title: '',
@@ -66,6 +70,21 @@ const app = Vue.createApp({
             this.currentTab = tabId;
             this.loadLine();
         },
+
+        saveOriginal(){
+            this.originalLineFile = deepClone(this.lineFile);
+            this.undoable = true;
+        },
+        undo(){
+            if(this.undoable){
+                this.lineFile = deepClone(this.originalLineFile);
+                this.undoable = false;
+                this.$refs.tabStation.undo();
+            }else{
+                this.showMessage("撤销失败", "", "没有可以撤销的内容了。");
+            }
+        },
+
         loadLineFromReality(){
             this.showModalConfirm("读取线路", "确定读取线路吗？现有线路内容将丢失。请确保已保存当前线路。", this.showModalLineSearch);
         },
@@ -159,6 +178,7 @@ const app = Vue.createApp({
             });
         },
         loadLine() {
+            this.undoable = false;
             this.$refs.tabStation.loadLine();
         },
         loadLineFromFile(){

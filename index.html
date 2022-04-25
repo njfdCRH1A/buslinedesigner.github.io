@@ -49,6 +49,8 @@
                                     <li><a class="dropdown-item" href="javascript: void(0)" @click="uploadLine()">从文件读取线路</a></li>
                                     <li><a class="dropdown-item" href="javascript: void(0)" @click="pasteLine()">从剪贴板读取线路</a></li>
                                     <li><a class="dropdown-item" href="javascript: void(0)" @click="loadLineFromReality()">读取现存线路</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" href="javascript: void(0)" :class="{ 'disabled': !undoable }" @click="undo()">撤销上一步操作</a></li>
                                 </ul>
                             </li>
                             <li v-for="tab in tabs" class="nav-item"><a class="nav-link" :class="{ 'active': currentTab == tab.id }" @click="setTab(tab.id)" href="#">{{ tab.name }}</a></li>
@@ -98,8 +100,8 @@
                         </div>
                     </div>
                 </div>
-                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" version="1.2.6"></tab-station>
-                <tab-fare :hidden="currentTab != 'fare'"></tab-fare>
+                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" @modified="saveOriginal()" @undo="undo()" version="1.3.0"></tab-station>
+                <tab-fare ref="tabFare" :hidden="currentTab != 'fare'" v-model:line="lineFile"></tab-fare>
                 <tab-schematic :hidden="currentTab != 'schematic'"></tab-schematic>
                 <tab-about :hidden="currentTab != 'about'"></tab-about>
                 <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
@@ -115,7 +117,7 @@
             </main>
             <footer class="footer mt-auto py-3 bg-light">
                 <div class="container">
-                    <span class="text-muted font-monospace">Version 1.2.6 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
+                    <span class="text-muted font-monospace">Version 1.3 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
                 </div>
             </footer>
         </div>
