@@ -1,3 +1,8 @@
+tr {
+    border-bottom: none;
+    white-space: nowrap;
+}
+
 .TabStationCard1 {
     min-height: 240px;
     max-height: 600px;
@@ -11,10 +16,51 @@
     height: 600px;
 }
 
+.TabFareCard1 {
+    max-height: 600px;
+}
+
+.TabFareCard2 {
+    height: 600px;
+}
+
+.TabFareTableData {
+    text-align: right;
+    border-width: 1px 1px 0px 0px;
+    border-bottom: none;
+    border-color: black;
+}
+
+.TabFareTableDataRowPlaceholder {
+    text-align: right;
+    border-width: 1px 0px 0px 0px;
+    border-bottom: none;
+    border-color: black;
+}
+
+.TabFareTableStationAhead {
+    text-align: right;
+    border-width: 0px 1px 0px 0px;
+    border-bottom: none;
+    border-color: black;
+}
+
+.TabFareTableStationBehind {
+    border: none;
+}
+
+.TabFareTablePlaceholder {
+    border: none;
+}
+
 .row>* {
     padding: 0px;
 }
 
 .card-footer {
     border-style: none;
+}
+
+tr {
+    border-bottom-width: 0px;
 }

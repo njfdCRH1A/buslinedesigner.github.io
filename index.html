@@ -2,20 +2,24 @@
 <html lang="zh" class="h-100">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
         <title>Bus Line Designer</title>
         <link rel="icon" href="assets/favicon.ico" type="image/x-icon" />
         <link rel="stylesheet" href="assets/bootstrap.min.css" />
         <link rel="stylesheet" href="assets/style.css" />
+	    <link rel="manifest" href="manifest.json" />
         <script src="tools/jquery.min.js"></script>
         <script src="tools/bootstrap.min.js"></script>
         <script src="tools/vue.global.prod.js"></script>
         <script src="tools/reactivity.global.prod.js"></script>
         <script src="tools/crc32c.js"></script>
         <script src="tools/deepclone.js"></script>
+        <script src="tools/utils.js"></script>
         <script src="tools/clipboard.min.js"></script>
-        <script src="tools/vue-cookies.js"></script>
         <script src="tools/jscolor.min.js"></script>
+        <script src="tools/html2canvas.min.js"></script>
+        <script src="tools/xlsx.full.min.js"></script>
         <script src="amapConfig.js"></script>
         <script src="https://webapi.amap.com/loader.js"></script>
         <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
@@ -30,7 +34,7 @@
             </symbol>
         </svg>
     </head>
-    <body class="d-flex flex-column h-100" style="overflow-y:auto; overflow-x:hidden;">
+    <body class="d-flex flex-column h-100" style="overflow-y:auto; overflow-x:hidden; height: 100%;">
         <div id="app" class="d-flex flex-column h-100">
             <nav class="navbar navbar-expand-md navbar-dark bg-dark">
                 <div class="container-fluid">
@@ -50,10 +54,10 @@
                                     <li><a class="dropdown-item" href="javascript: void(0)" @click="pasteLine()">从剪贴板读取线路</a></li>
                                     <li><a class="dropdown-item" href="javascript: void(0)" @click="loadLineFromReality()">读取现存线路</a></li>
                                     <li><hr class="dropdown-divider" /></li>
-                                    <li><a class="dropdown-item" href="javascript: void(0)" :class="{ 'disabled': !undoable }" @click="undo()">撤销上一步操作</a></li>
+                                    <li><a class="dropdown-item" href="javascript: void(0)" :class="{ 'disabled': (!undoable || settings.general.enableUndoFunc.current != '1') }" v-text="settings.general.enableUndoFunc.current == '1' ? '撤销上一步操作' : '撤销 (已禁用)'" @click="undo()"></a></li>
                                 </ul>
                             </li>
-                            <li v-for="tab in tabs" class="nav-item"><a class="nav-link" :class="{ 'active': currentTab == tab.id }" @click="setTab(tab.id)" href="#">{{ tab.name }}</a></li>
+                            <li v-for="tab in tabs" class="nav-item"><a class="nav-link" :class="{ 'active': currentTab == tab.id }" v-text="tab.name" @click="setTab(tab.id)" href="#"></a></li>
                         </ul>
                     </div>
                 </div>
@@ -70,14 +74,14 @@
                                 <span>{{ modalConfirm.content }}</span>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
                                 <button type="button" id="modalConfirmOK" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal fade" id="modalLineSearch" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-dialog-scrollable">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h6 class="modal-title">读取线路</h6>
@@ -88,21 +92,80 @@
                                     <label class="col-form-label">线路名称:</label>
                                     <input type="text" class="form-control" autocomplete="off" placeholder="填写线路完整名称" v-model.trim="modalLineSearch.lineName" />
                                 </div>
-                                <div class="mb-3">
+                                <div class="mb-3" v-if="modalLineSearch.dataSource == 'AMap'">
                                     <label class="col-form-label">所在城市:（选填）</label>
-                                    <input type="text" class="form-control" autocomplete="off" placeholder="支持城市名、行政区划代码和电话区号" v-model.trim="modalLineSearch.city" />
+                                    <input type="text" class="form-control" autocomplete="off" placeholder='支持城市名称、行政区划代码和电话区号' v-model.trim="modalLineSearch.city" />
+                                </div>
+                                <div class="mb-3" v-if="modalLineSearch.dataSource == 'chelaile' && !Object.getOwnPropertyNames(regions).length">
+                                    <label class="col-form-label">所在省份:</label>
+                                    <select class="form-select" disabled>
+                                        <option>{{ modalLineSearch.CitiesLoadingPrompt }}</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3" v-if="modalLineSearch.dataSource == 'chelaile' && Object.getOwnPropertyNames(regions).length">
+                                    <label class="col-form-label">所在省份:</label>
+                                    <select class="form-select" v-model="modalLineSearch.chelaile.province">
+                                        <option v-for="province in regions" :value="province.name">{{ province.name }}</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3" v-if="modalLineSearch.dataSource == 'chelaile' && modalLineSearch.chelaile.province != ''">
+                                    <label class="col-form-label">所在城市:</label>
+                                    <select class="form-select" v-model="modalLineSearch.chelaile.city">
+                                        <option v-for="(city, index) in regions[modalLineSearch.chelaile.province].cities" :value="city">{{ city.name }}</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="col-form-label">数据源:</label>
+                                    <select class="form-select" v-model="modalLineSearch.dataSource">
+                                        <option selected value="AMap">高德地图</option>
+                                        <option value="chelaile">车来了 [试验] (不保证稳定性)</option>
+                                        <option disabled value="BMap">未来可能会添加更多数据源…</option>
+                                        <option disabled value="CMap">如有相关数据源推荐，可以联系 BobLiu</option>
+                                        <option disabled value="DMap">不过腾讯地图和百度地图估计没希望了</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                <button type="button" id="modalLineSearchOK" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                                <button type="button" id="modalLineSearchOKAdvanced" class="btn btn-outline-primary" @click="loadLineFromRealitySearch(true)" data-bs-dismiss="modal">高级搜索</button>
+                                <button type="button" id="modalLineSearchOK" class="btn btn-primary" @click="loadLineFromRealitySearch(false)" data-bs-dismiss="modal">读取</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" @modified="saveOriginal" @undo="undo" @confirm="showModalConfirmForComponents" version="1.3.2"></tab-station>
-                <tab-fare ref="tabFare" :hidden="currentTab != 'fare'" v-model:line="lineFile"></tab-fare>
+                <div class="modal fade" id="modalLineSearchAdvanced" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h6 class="modal-title">读取线路</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body form-control" style="border: 0px; padding: 0px; overflow-y:auto; overflow-x:hidden;">
+                                <div class="list-group list-group-flush">
+                                    <li v-if="modalLineSearch.dataSource == 'AMap'" v-for="(item, index) in modalLineSearchAdvanced.data" class="list-group-item list-group-item-action d-flex align-content-center justify-content-between">
+                                        <span v-text="(item.name.replace(/\(.*\)$/, '').replace('内环', '').replace('外环', '').replace('内圈', '').replace('外圈', '')) + ' (' + item.start_stop + ((item.direc == item.id)?' ⇀ ':' ⇌ ') + item.end_stop + ')'"></span>
+                                        <div class="btn-group btn-group-sm pull-right" role="group">
+                                            <button type="button" class="btn btn-outline-primary" @click="getLineFromAmapAdvancedSelect(index)" data-bs-dismiss="modal">读取</button>
+                                        </div>
+                                    </li>
+                                    <li v-if="modalLineSearch.dataSource == 'chelaile'" v-for="(item, index) in modalLineSearchAdvanced.data"  class="list-group-item list-group-item-action d-flex align-content-center justify-content-between">
+                                        <span v-text="item.name + ' (' + item.startSn + ' → ' + item.endSn + ')'"></span>
+                                        <div class="btn-group btn-group-sm pull-right" role="group">
+                                            <button type="button" class="btn btn-outline-primary" @click="getLineFromChelaileAdvancedSelect(index)" data-bs-dismiss="modal">读取</button>
+                                        </div>
+                                    </li>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <tab-station ref="tabStation" :hidden="currentTab != 'stations'" v-model:line="lineFile" v-model:settings="settings" @modified="saveOriginal" @undo="undo" @confirm="showModalConfirmForComponents" @loadline="loadLine" @toast="showMessage" @toggletab="toggleTab"></tab-station>
+                <tab-fare ref="tabFare" v-if="currentTab == 'fare'" v-model:line="lineFile" v-model:settings="settings" @toast="showMessage"></tab-fare>
                 <tab-schematic :hidden="currentTab != 'schematic'"></tab-schematic>
+                <tab-settings :hidden="currentTab != 'settings'" v-model:settings="settings"></tab-settings>
                 <tab-about :hidden="currentTab != 'about'"></tab-about>
                 <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
                     <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" :data-bs-autohide="toast.autohide">
@@ -117,7 +180,7 @@
             </main>
             <footer class="footer mt-auto py-3 bg-light">
                 <div class="container">
-                    <span class="text-muted font-monospace">Version 1.3.2 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
+                    <span class="text-muted font-monospace">Version 2.0.0 Beta. Code by <a class="text-reset" href="https://github.com/BobLiu0518" target="_blank">BobLiu</a>.</span>
                 </div>
             </footer>
         </div>
@@ -125,9 +188,10 @@
         <script src="./components/TabStation.js"></script>
         <script src="./components/TabFare.js"></script>
         <script src="./components/TabSchematic.js"></script>
+        <script src="./components/TabSettings.js"></script>
         <script src="./components/TabAbout.js"></script>
         <script>
-            const mountedApp = app.mount('#app')
+            const mountedApp = bld.mount('#app')
         </script>
     </body>
 </html>

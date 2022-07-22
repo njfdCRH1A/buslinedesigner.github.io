@@ -1,16 +1,16 @@
 // TabStation.js
 // “设站”面板
 
-app.component('tab-station', {
+bld.component('tab-station', {
     props: {
         line: {
             type: Object,
             required: true
         },
-        version: {
-            type: String,
+        settings: {
+            type: Object,
             required: true
-        }
+        },
     },
     setup() {
         const map = VueReactivity.shallowRef(null);
@@ -19,24 +19,16 @@ app.component('tab-station', {
         }
     },
     mounted() {
-        if(this.version != this.componentVersion){
-            alert("[警告] 版本号匹配失败，继续使用可能会出现问题！\n请按下 Ctrl+F5 或 Command+Shift+R 或清除浏览器缓存后再访问。\n" + 
-                "BLD 版本号: " + this.version + "，组件版本号：" + this.componentVersion);
-        }
-
         jscolor.presets.default = {
             format: 'hex',
             previewSize: 40
         };
-        $cookies.config(Infinity);
-        if($cookies.isKey("stationSettings")){
-            var savedSettings = $cookies.get("stationSettings");
-            for(const key in savedSettings){
-                this.settings[key] = savedSettings[key];
-            }
-        }else{
-            $cookies.set("stationSettings", this.settings);
-        }
+
+        this.fileInput = document.createElement('input');
+        this.fileInput.setAttribute('type', 'file');
+        this.fileInput.addEventListener('change', this.readFile);
+        this.fileReader = new FileReader();
+        this.fileReader.addEventListener('load', this.loadLineMap);
 
         this.mapInit();
         document.getElementById('amap').onkeydown = this.hotKey;
@@ -49,75 +41,19 @@ app.component('tab-station', {
             <div class="modal-dialog modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h6 class="modal-title">设置</h6>
+                        <h6 class="modal-title">地图设置</h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body form-control" style="border: 0px;">
-                        <div class="mb-3">
-                            <label class="form-label">正方向</label>
-                            <select class="form-select" id="stationLightness" v-model="settings.mainDirection" @change="$nextTick(() => { setCookies(); });">
-                                <option selected value="0">上行</option>
-                                <option value="1">下行</option>
+                        <div class="mb-3" v-for="(item, index) in settings.map">
+                            <label class="form-label" v-text="item.name"></label>
+                            <select class="form-select" v-model="item.current">
+                                <option v-for="(option, index) in item.options" :value="option.value" v-text="option.name"></option>
                             </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">在地图上显示站名</label>
-                            <select class="form-select" id="showStationName" v-model.number="settings.showStationName" @change="$nextTick(() => { mapItems.labelsLayer.setCollision(parseInt(settings.showStationName)); loadMapLine(false); setCookies(); });">
-                                <option value="0">不显示</option>
-                                <option selected value="1">智能显示 (防碰撞)</option>
-                                <option value="0.5">全部显示</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">显示线路反向</label>
-                            <select class="form-select" id="showOpposite" v-model.number="settings.showOpposite" @change="$nextTick(() => { loadMapLine(false); setCookies(); });">
-                                <option value="0">不显示</option>
-                                <option selected value="0.4">半透明显示</option>
-                                <option value="1">不透明显示</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">地图风格</label>
-                            <select class="form-select" id="mapStyle" v-model="settings.mapStyle" @change="$nextTick(() => { map.setMapStyle(settings.mapStyle); setCookies(); });">
-                                <option selected value="amap://styles/normal">默认</option>
-                                <option value="amap://styles/macaron">马卡龙</option>
-                                <option value="amap://styles/fresh">草色青</option>
-                                <option value="amap://styles/whitesmoke">远山黛</option>
-                                <option value="amap://styles/light">月光银</option>
-                                <option value="amap://styles/blue">靛青蓝</option>
-                                <option value="amap://styles/darkblue">极夜蓝</option>
-                                <option value="amap://styles/grey">雅土灰</option>
-                                <option value="amap://styles/dark">幻影黑</option>
-                            </select>
-                        </div>
-                        <div class="collapse" id="advancedSettings">
-                            <div class="mb-3">
-                                <label class="form-label">站点颜色明度</label>
-                                <select class="form-select" id="stationLightness" v-model="settings.stationLightness" @change="$nextTick(() => { loadMapLine(false); setCookies(); });">
-                                    <option selected value="-64">暗</option>
-                                    <option value="-32">较暗</option>
-                                    <option value="0">不变</option>
-                                    <option value="32">较亮</option>
-                                    <option value="64">亮</option>
-                                    <option value="origin">原版</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">线路宽度</label>
-                                <input type="number" class="form-control" min="1" max="30" v-model.number="settings.lineStrokeWidth" oninput="if(value>30){value=30;}else if(value<1){value=1;}" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
-                            </div>
-                            <div class="mb-3" v-if="settings.stationLightness!='origin'">
-                                <label class="form-label">站点大小</label>
-                                <input type="number" class="form-control" min="1" max="20" v-model.number="settings.stationFillRadius" oninput="if(value>20){value=20;}else if(value<1){value=1;}" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
-                            </div>
-                            <div class="mb-3" v-if="settings.stationLightness!='origin'">
-                                <label class="form-label">站点描边宽度</label>
-                                <input type="number" class="form-control" min="1" max="10" v-model.number="settings.stationStrokeWidth" oninput="if(value>10){value=10;}else if(value<1){value=1;}" @change="$nextTick(() => { loadMapLine(false); setCookies(); });" />
-                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#advancedSettings" aria-expanded="false" aria-controls="collapseExample">高级</button>
+                        <button type="button" class="btn btn-outline-secondary" style="float:left" @click="$emit('toggletab', {'tab': 'settings'});" data-bs-dismiss="modal">更多设置</button>
                         <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal" @click="$emit('confirm', {'title':'复原地图设置', 'content': '确认复原地图设置吗？', 'execute': resetSettings})">复原</button>
                         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
                     </div>
@@ -125,7 +61,7 @@ app.component('tab-station', {
             </div>
         </div>
         <div class="modal fade" id="modalLineMap" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h6 class="modal-title">线网</h6>
@@ -135,10 +71,17 @@ app.component('tab-station', {
                         <div class="list-group list-group-flush">
                             <li v-if="!mapItems.lineMap.length" class="list-group-item list-group-item-action">点击“添加当前线路”即可将当前线路添加至线网中</li>
                             <li v-for="(lineMapLine, index) in mapItems.lineMap" class="list-group-item list-group-item-action d-flex align-content-center justify-content-between">
-                                <span class="align-self-center">{{ lineMapLine.lineName }}</span>
+                                <span class="align-self-center">{{ lineMapLine.data.lineFile.lineName?lineMapLine.data.lineFile.lineName:'未命名线路' }}</span>
                                 <div class="btn-group btn-group-sm pull-right" role="group">
-                                    <button type="button" class="btn btn-outline-primary" :class="{ active: lineMapLine.showLineUp, disabled: !lineMapLine.polylineUp }" @click="setShowLineOfLineMap(index, 'up')">{{ settings.mainDirection!="1"?"上行":"下行" }}</button>
-                                    <button type="button" class="btn btn-outline-primary" :class="{ active: lineMapLine.showLineDown, disabled: (!lineMapLine.polylineDown) || (lineMapLine.lineType % 2) != 1 }" @click="setShowLineOfLineMap(index, 'down')">{{ settings.mainDirection!="1"?"下行":"上行" }}</button>
+                                    <button type="button" class="btn btn-outline-primary" @click="editLineOfLineMap(index)" data-bs-dismiss="modal">编辑</button>
+                                    <button type="button" class="btn btn-outline-primary" :class="{ active: lineMapLine.config.showStations, disabled: (!lineMapLine.figure.stationsUp) && (!lineMapLine.figure.stationsDown) }" @click="setShowStationsOfLineMap(index)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-record-circle" viewBox="0 0 16 16">
+                                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                            <path d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" :class="{ active: lineMapLine.config.showLineUp, disabled: !lineMapLine.figure.polylineUp }" @click="setShowLineOfLineMap(index, 'up')">{{ settings.general.mainDirection.current!="1"?"上行":"下行" }}</button>
+                                    <button type="button" class="btn btn-outline-primary" :class="{ active: lineMapLine.config.showLineDown, disabled: (!lineMapLine.figure.polylineDown) || (lineMapLine.data.lineFile.lineType % 2) != 1 }" @click="setShowLineOfLineMap(index, 'down')">{{ settings.general.mainDirection.current!="1"?"下行":"上行" }}</button>
                                     <button type="button" class="btn btn-outline-danger" title="从线网中删除线路" @click="removeLineFromLineMap(index)">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
                                             <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
@@ -150,63 +93,96 @@ app.component('tab-station', {
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-primary" @click="appendLineToLineMap()">添加当前线路</button>
-                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                        <div class="btn-group" role="group" style="float:left">
+                            <button type="button" class="btn btn-outline-primary" title="读取线网" @click="getFile()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cloud-upload" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 11 0 9.366 0 7.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+                                    <path fill-rule="evenodd" d="M7.646 4.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V14.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" title="保存线网" @click="downloadLineMap()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-arrow-down" viewBox="0 0 16 16">
+                                    <path d="M8.5 6.5a.5.5 0 0 0-1 0v3.793L6.354 9.146a.5.5 0 1 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2a.5.5 0 0 0-.708-.708L8.5 10.293V6.5z"/>
+                                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary" @click="appendLineToLineMap()">添加当前线路</button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="alert alert-primary alert-dismissible d-flex align-items-center" role="alert" v-if="!chrome">
             <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:"><use xlink:href="#info-fill" /></svg>
-            <div><span>为获得更好的体验，建议使用 <a href="https://google.cn/chrome/" class="alert-link" target="_blank">Chrome</a> 浏览器。</span></div>
+            <div><span>为保证各项功能正常运行，建议使用 <a href="https://google.cn/chrome/" class="alert-link" target="_blank">Chrome</a> 浏览器。</span></div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         <h1><span class="fw-normal display-5">{{ title }}</span><span class="fw-normal display-7">{{ subtitle }}</span></h1>
         <div class="row justify-content-between">
-            <div class="col-12 col-md-3 card mb-3 TabStationCard1">
-                <div class="card-header">基本信息</div>
-                <div class="card-body" style="overflow-y:auto; overflow-x:hidden;">
-                    <div class="mb-3">
-                        <label class="form-label" for="lineName">线路名称</label>
-                        <input type="text" class="form-control" id="lineName" autocomplete="off" placeholder="未命名线路" v-model.trim="line.lineName"/>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="lineType">线路类型</label>
-                        <select class="form-select" id="lineType" v-model.number="line.lineType" @change="checkDirection()">
-                            <option selected value="1">双向线路</option>
-                            <option value="2">单向线路</option>
-                            <option value="3">双向环线</option>
-                            <option value="4">单向环线</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="company">运营公司</label>
-                        <input type="text" class="form-control" id="company" autocomplete="off" placeholder="填写运营公司名称" v-model.trim="line.company" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="city">所在地区</label>
-                        <input type="text" class="form-control" id="city" autocomplete="off" placeholder="填写城市名称或地区行政代码" v-model.trim="cityName" @change="searchCity()" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="infoUp">{{ isBilateral?(settings.mainDirection!="1"?"上行信息":"下行信息"):"线路信息" }}</label>
-                        <input type="text" class="form-control" id="infoUp" placeholder="0站 / 0.0km" v-model.trim="infoUp" disabled readonly />
-                    </div>
-                    <div class="mb-3" v-if="isBilateral">
-                        <label class="form-label" for="infoDown">{{ settings.mainDirection!="1"?"下行信息":"上行信息" }}</label>
-                        <input type="text" class="form-control" id="infoDown" placeholder="0站 / 0.0km" v-model.trim="infoDown" disabled readonly />
-                    </div>
-                    <div class="mb-3">
-                    <label class="form-label" for="lineColor">线路颜色</label>
-                        <input type="text" class="form-control" id="lineColor" autocomplete="off" v-model.trim="line.lineColor" data-jscolor="{}" @change="$nextTick(() => { loadMapLine(false); });" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">线路备注</label>
-                        <textarea class="form-control" autocomplete="off" rows="1" v-model.trim="line.remark"></textarea>
+            <div class="col-12 col-md-3 mb-3 p-md-3">
+                <div class="card TabStationCard1">
+                    <div class="card-header">基本信息</div>
+                    <div class="card-body" style="overflow-y:auto; overflow-x:hidden;">
+                        <div class="mb-3">
+                            <label class="form-label" for="lineName">线路名称</label>
+                            <input type="text" class="form-control" id="lineName" autocomplete="off" placeholder="未命名线路" v-model.trim="line.lineName"/>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="lineType">线路类型</label>
+                            <select class="form-select" id="lineType" v-model.number="line.lineType" @change="checkDirection()">
+                                <option selected value="1">双向线路</option>
+                                <option value="2">单向线路</option>
+                                <option value="3">双向环线</option>
+                                <option value="4">单向环线</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="company">运营公司</label>
+                            <input type="text" class="form-control" id="company" autocomplete="off" placeholder="填写运营公司名称" v-model.trim="line.company" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="city">所在地区</label>
+                            <input type="text" class="form-control" id="city" autocomplete="off" placeholder="填写城市名称或地区行政代码" v-model.trim="cityName" @change="searchCity()" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="infoUp">{{ isBilateral?(settings.general.mainDirection.current!="1"?"上行信息":"下行信息"):"线路信息" }}</label>
+                            <input type="text" class="form-control" id="infoUp" placeholder="0站 / 0.0km" v-model.trim="infoUp" disabled readonly />
+                        </div>
+                        <div class="mb-3" v-if="isBilateral">
+                            <label class="form-label" for="infoDown">{{ settings.general.mainDirection.current!="1"?"下行信息":"上行信息" }}</label>
+                            <input type="text" class="form-control" id="infoDown" placeholder="0站 / 0.0km" v-model.trim="infoDown" disabled readonly />
+                        </div>
+                        <div class="mb-3" title="注：为节约性能，打开“票价”面板后本项才会刷新">
+                            <label class="form-label" for="lineFare">线路票价</label>
+                            <input type="text" class="form-control" id="lineFare" placeholder="在“票价”面板设置" v-model.trim="line.fare.desc" disabled readonly />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="serviceTimeUp">{{ isBilateral?(settings.general.mainDirection.current!="1"?"上行时间":"下行时间"):"运营时间" }}</label>
+                            <textarea class="form-control" id="serviceTimeUp" autocomplete="off" rows="1" placeholder="未知" v-model.trim="line.serviceTime.up" />
+                        </div>
+                        <div class="mb-3" v-if="isBilateral">
+                            <label class="form-label" for="serviceTimeDown">{{ settings.general.mainDirection.current!="1"?"下行时间":"上行时间" }}</label>
+                            <textarea class="form-control" id="serviceTimeDown" autocomplete="off" rows="1" placeholder="未知" v-model.trim="line.serviceTime.down" />
+                        </div>
+                        <div class="mb-3">
+                        <label class="form-label" for="lineColor">线路颜色</label>
+                            <input type="text" class="form-control" id="lineColor" autocomplete="off" v-model.trim="line.lineColor" data-jscolor="{}" @change="checkColor()" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">线路备注</label>
+                            <textarea class="form-control" autocomplete="off" rows="1" v-model.trim="line.remark"></textarea>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-3 card mb-3 TabStationCard2">
-                <div class="card-header">{{ showStationsOnly?"线路站点":"线路节点" }}</div>
+            <div class="col-12 col-md-3 mb-3 p-md-3">
+                <div class="card TabStationCard2">
+                    <div class="card-header">{{ showStationsOnly?"线路站点":"线路节点" }}</div>
                     <div class="card-body" style="padding: 0px; overflow-y:auto; overflow-x:hidden;">
                         <div v-if="!showStationsOnly" class="list-group list-group-flush">
                             <a v-if="!nodes.length" href="javascript: void(0)" class="list-group-item list-group-item-action">使用添加节点工具在地图上单击即可添加</a>
@@ -219,142 +195,145 @@ app.component('tab-station', {
                                     <path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/>
                                 </svg>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="8" height="16" fill="currentColor"></svg>
-                                <input v-if="renameEnabled && selectedNode == index" autocomplete="off" v-model.trim="node.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()"/>
+                                <input v-if="renameEnabled && selectedNode == index" autocomplete="off" v-model.trim="node.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()" />
                                 <span v-else>{{ node.name }}</span>
                             </a>
                         </div>
                         <div v-if="showStationsOnly" class="list-group list-group-flush">
-                        <a v-if="!nodes.length" href="javascript: void(0)" class="list-group-item list-group-item-action">使用添加节点工具在地图上单击即可添加</a>
-                        <a v-for="station in stations" class="list-group-item list-group-item-action" :class="{ active: selectedNode == station.id }" @click="selectNode(station.id, false)">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-record-circle" viewBox="0 0 16 16">
-                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                                <path d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-                            </svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="8" height="16" fill="currentColor"></svg>
-                            <input v-if="renameEnabled && selectedNode == station.id" autocomplete="off" v-model.trim="station.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()"/>
-                            <span v-else>{{ station.name }}</span>
-                        </a>
+                            <a v-if="!nodes.length" href="javascript: void(0)" class="list-group-item list-group-item-action">使用添加节点工具在地图上单击即可添加</a>
+                            <a v-for="station in stations" class="list-group-item list-group-item-action" :class="{ active: selectedNode == station.id }" @click="selectNode(station.id, false)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-record-circle" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="16" fill="currentColor"></svg>
+                                <input v-if="renameEnabled && selectedNode == station.id" autocomplete="off" v-model.trim="station.name" type="text" class="h-100" style="border-style: none" @keypress="renameKeyPress()"/>
+                                <span v-else>{{ station.name }}</span>
+                            </a>
+                        </div>
+                        <div style="border-width: 1px 0 0 0; border-style: solid; border-color: rgba(0,0,0,.125);"></div>
                     </div>
-                    <div style="border-width: 1px 0 0 0; border-style: solid; border-color: rgba(0,0,0,.125);"></div>
-                </div>
-                <div class="card-footer">
-                    <div class="btn-group btn-group-sm pull-right" role="group" style="float:left" :hidden="!isBilateral">
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'up' }" @click="setDirection('up')">{{ settings.mainDirection!="1"?"上行":"下行" }}</button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'down' }" @click="setDirection('down')">{{ settings.mainDirection!="1"?"下行":"上行" }}</button>
-                        <button type="button" class="btn btn-outline-primary" title="反转上下行" @click="$emit('confirm', {'title':'反转上下行', 'content': '确认反转上下行吗？', 'execute': reverseDirection});">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shuffle" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3v1c-1.798 0-3.173 1.01-4.126 2.082A9.624 9.624 0 0 0 7.556 8a9.624 9.624 0 0 0 1.317 1.918C9.828 10.99 11.204 12 13 12v1c-2.202 0-3.827-1.24-4.874-2.418A10.595 10.595 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13H.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.624 9.624 0 0 0 6.444 8a9.624 9.624 0 0 0-1.317-1.918C4.172 5.01 2.796 4 1 4H.5a.5.5 0 0 1-.5-.5z"/>
-                                <path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192zm0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192z"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="btn-group btn-group-sm pull-right" role="group" style="float:right">
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: showStationsOnly }" title="只显示站点" @click="setShowStationsOnly(null)">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-record-circle" viewBox="0 0 16 16">
-                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                                <path d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: renameEnabled }" title="重命名当前节点" @click="setRenameMode()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-input-cursor-text" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M5 2a.5.5 0 0 1 .5-.5c.862 0 1.573.287 2.06.566.174.099.321.198.44.286.119-.088.266-.187.44-.286A4.165 4.165 0 0 1 10.5 1.5a.5.5 0 0 1 0 1c-.638 0-1.177.213-1.564.434a3.49 3.49 0 0 0-.436.294V7.5H9a.5.5 0 0 1 0 1h-.5v4.272c.1.08.248.187.436.294.387.221.926.434 1.564.434a.5.5 0 0 1 0 1 4.165 4.165 0 0 1-2.06-.566A4.561 4.561 0 0 1 8 13.65a4.561 4.561 0 0 1-.44.285 4.165 4.165 0 0 1-2.06.566.5.5 0 0 1 0-1c.638 0 1.177-.213 1.564-.434.188-.107.335-.214.436-.294V8.5H7a.5.5 0 0 1 0-1h.5V3.228a3.49 3.49 0 0 0-.436-.294A3.166 3.166 0 0 0 5.5 2.5.5.5 0 0 1 5 2z"/>
-                                <path d="M10 5h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4v1h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4v1zM6 5V4H2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4v-1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" title="更改当前节点类型 [Ctrl+/]" @click="changeNode()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
-                                <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
-                                <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger" v-if="!showStationsOnly" title="删除当前节点 [Backspace]" @click="deleteNode()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger" v-if="showStationsOnly" title="删除当前站点 [Backspace]" @click="deleteNodes()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                            </svg>
-                        </button>
+                    <div class="card-footer">
+                        <div class="btn-group btn-group-sm pull-right" role="group" style="float:left" :hidden="!isBilateral">
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'up' }" @click="setDirection('up')">{{ settings.general.mainDirection.current!="1"?"上行":"下行" }}</button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedDirection == 'down' }" @click="setDirection('down')">{{ settings.general.mainDirection.current!="1"?"下行":"上行" }}</button>
+                            <button type="button" class="btn btn-outline-primary" title="反转上下行" @click="$emit('confirm', {'title':'反转上下行', 'content': '确认反转上下行吗？', 'execute': reverseDirection});">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shuffle" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3v1c-1.798 0-3.173 1.01-4.126 2.082A9.624 9.624 0 0 0 7.556 8a9.624 9.624 0 0 0 1.317 1.918C9.828 10.99 11.204 12 13 12v1c-2.202 0-3.827-1.24-4.874-2.418A10.595 10.595 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13H.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.624 9.624 0 0 0 6.444 8a9.624 9.624 0 0 0-1.317-1.918C4.172 5.01 2.796 4 1 4H.5a.5.5 0 0 1-.5-.5z"/>
+                                    <path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192zm0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="btn-group btn-group-sm pull-right" role="group" style="float:right">
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: showStationsOnly }" title="只显示站点" @click="setShowStationsOnly(null)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-record-circle" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: renameEnabled }" title="重命名模式" @click="setRenameMode()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-input-cursor-text" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M5 2a.5.5 0 0 1 .5-.5c.862 0 1.573.287 2.06.566.174.099.321.198.44.286.119-.088.266-.187.44-.286A4.165 4.165 0 0 1 10.5 1.5a.5.5 0 0 1 0 1c-.638 0-1.177.213-1.564.434a3.49 3.49 0 0 0-.436.294V7.5H9a.5.5 0 0 1 0 1h-.5v4.272c.1.08.248.187.436.294.387.221.926.434 1.564.434a.5.5 0 0 1 0 1 4.165 4.165 0 0 1-2.06-.566A4.561 4.561 0 0 1 8 13.65a4.561 4.561 0 0 1-.44.285 4.165 4.165 0 0 1-2.06.566.5.5 0 0 1 0-1c.638 0 1.177-.213 1.564-.434.188-.107.335-.214.436-.294V8.5H7a.5.5 0 0 1 0-1h.5V3.228a3.49 3.49 0 0 0-.436-.294A3.166 3.166 0 0 0 5.5 2.5.5.5 0 0 1 5 2z"/>
+                                    <path d="M10 5h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-4v1h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-4v1zM6 5V4H2a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4v-1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" title="更改当前节点类型 [Ctrl+/]" @click="changeNode()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
+                                    <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
+                                    <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" v-if="!showStationsOnly" title="删除当前节点 [Backspace]" @click="deleteNode()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" v-if="showStationsOnly" title="删除当前站点 [Backspace]" @click="deleteNodes()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-5 card mb-3 TabStationCard3" id="mapPanel">
-	            <div class="card-header" @click="loadMapLine(true, true);">
-                    <span>线路走向</span>
-                </div>
-	            <div class="card-body" id="amap"></div>
-	            <div class="card-footer">
-                    <div class="btn-group btn-group-sm pull-right" role="group" style="float: left">
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: satelliteEnabled }" @click="setSatelliteLayer()" title="卫星图层">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
-                                <path d="M702.171429 752.55873c27.631746 0 48.761905-21.130159 48.761904-47.136508 0-11.377778-4.87619-22.755556-11.377777-30.882539l39.009523-39.009524c19.504762-19.504762 19.504762-50.387302 0-68.266667l-206.425396-206.425397 92.647619-92.647619 94.273015 94.273016c19.504762 19.504762 50.387302 19.504762 68.266667 0l32.507937-32.507936c19.504762-19.504762 19.504762-50.387302 0-68.266667l-235.68254-235.68254c-19.504762-19.504762-50.387302-19.504762-68.266667 0l-32.507936 32.507937c-19.504762 19.504762-19.504762 50.387302 0 68.266666l94.273016 94.273016-92.647619 92.647619-206.425397-206.425397c-19.504762-19.504762-50.387302-19.504762-68.266667 0l-152.787301 152.787302c-19.504762 19.504762-19.504762 50.387302 0 68.266667l206.425396 206.425397-92.647619 92.647619-94.273016-94.273016c-19.504762-19.504762-50.387302-19.504762-68.266666 0l-32.507937 32.507936c-19.504762 19.504762-19.504762 50.387302 0 68.266667l235.68254 235.68254c19.504762 19.504762 50.387302 19.504762 68.266667 0l32.507936-32.507937c19.504762-19.504762 19.504762-50.387302 0-68.266667l-94.273016-94.273015 92.647619-92.64762 206.425397 206.425397c19.504762 19.504762 50.387302 19.504762 68.266667 0l45.511111-45.511111c8.126984 6.501587 19.504762 9.752381 30.88254 9.752381z" p-id="7032"></path><path d="M897.219048 658.285714h-71.517461c0 43.885714-17.879365 86.146032-50.387301 117.028572-32.507937 30.88254-76.393651 48.761905-123.530159 48.761904v68.266667c136.533333 0 245.434921-105.650794 245.434921-234.057143z" p-id="7033"></path><path d="M952.48254 658.285714c0 157.663492-134.907937 286.069841-299.073016 286.069842v68.266666c204.8 0 370.590476-159.288889 370.590476-352.711111h-71.51746z"></path>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: mapEnabled }" @click="setMapLayer()" title="地图图层">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-map" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M15.817.113A.5.5 0 0 1 16 .5v14a.5.5 0 0 1-.402.49l-5 1a.502.502 0 0 1-.196 0L5.5 15.01l-4.902.98A.5.5 0 0 1 0 15.5v-14a.5.5 0 0 1 .402-.49l5-1a.5.5 0 0 1 .196 0L10.5.99l4.902-.98a.5.5 0 0 1 .415.103zM10 1.91l-4-.8v12.98l4 .8V1.91zm1 12.98 4-.8V1.11l-4 .8v12.98zm-6-.8V1.11l-4 .8v12.98l4-.8z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" @click="elementFullScreen('mapPanel')" title="面板全屏">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-window-fullscreen" viewBox="0 0 16 16">
-                                <path d="M3 3.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Zm1.5 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Zm1 .5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1Z"/>
-                                <path d="M.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-13a.5.5 0 0 0-.5-.5H.5ZM1 5V2h14v3H1Zm0 1h14v8H1V6Z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" @click="setMapTool('watch');elementFullScreen('amap')" title="地图全屏">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" @click="showMapSettings()" title="设置">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear-wide-connected" viewBox="0 0 16 16">
-                                <path d="M7.068.727c.243-.97 1.62-.97 1.864 0l.071.286a.96.96 0 0 0 1.622.434l.205-.211c.695-.719 1.888-.03 1.613.931l-.08.284a.96.96 0 0 0 1.187 1.187l.283-.081c.96-.275 1.65.918.931 1.613l-.211.205a.96.96 0 0 0 .434 1.622l.286.071c.97.243.97 1.62 0 1.864l-.286.071a.96.96 0 0 0-.434 1.622l.211.205c.719.695.03 1.888-.931 1.613l-.284-.08a.96.96 0 0 0-1.187 1.187l.081.283c.275.96-.918 1.65-1.613.931l-.205-.211a.96.96 0 0 0-1.622.434l-.071.286c-.243.97-1.62.97-1.864 0l-.071-.286a.96.96 0 0 0-1.622-.434l-.205.211c-.695.719-1.888.03-1.613-.931l.08-.284a.96.96 0 0 0-1.186-1.187l-.284.081c-.96.275-1.65-.918-.931-1.613l.211-.205a.96.96 0 0 0-.434-1.622l-.286-.071c-.97-.243-.97-1.62 0-1.864l.286-.071a.96.96 0 0 0 .434-1.622l-.211-.205c-.719-.695-.03-1.888.931-1.613l.284.08a.96.96 0 0 0 1.187-1.186l-.081-.284c-.275-.96.918-1.65 1.613-.931l.205.211a.96.96 0 0 0 1.622-.434l.071-.286zM12.973 8.5H8.25l-2.834 3.779A4.998 4.998 0 0 0 12.973 8.5zm0-1a4.998 4.998 0 0 0-7.557-3.779l2.834 3.78h4.723zM5.048 3.967c-.03.021-.058.043-.087.065l.087-.065zm-.431.355A4.984 4.984 0 0 0 3.002 8c0 1.455.622 2.765 1.615 3.678L7.375 8 4.617 4.322zm.344 7.646.087.065-.087-.065z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" @click="showLineMap()" title="线网">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
-                                <path d="M372.350001 0v279.259092h240.629159A139.984074 139.984074 0 0 1 698.147729 194.090523V0h93.090909v194.13143a139.970438 139.970438 0 0 1 85.168569 85.182204h147.53825v93.090909H876.3663a140.065888 140.065888 0 0 1-85.086755 85.127662v54.542791A232.720455 232.720455 0 0 1 568.6086 744.509102l-10.104053 0.231806H457.477662a139.99771 139.99771 0 0 1-85.086754 85.127662v194.13143h-93.131816V829.86857a139.970438 139.970438 0 0 1-85.127662-85.182204H0v-93.077274h194.090523a140.011345 140.011345 0 0 1 85.168569-85.182204V372.350001H0V279.259092h279.259092V0z m-46.552273 651.609092A46.538637 46.538637 0 1 0 372.336365 698.147729a46.525001 46.525001 0 0 0-46.538637-46.538637z m287.222339-279.259091h-240.670066v194.13143a139.984074 139.984074 0 0 1 85.168568 85.168568h100.999614a139.643181 139.643181 0 0 0 139.397739-131.448127l0.231807-8.181418v-54.501885a140.024981 140.024981 0 0 1-85.127662-85.168568z m131.666299-93.090909a46.552272 46.552272 0 1 0 46.538636 46.538636 46.552272 46.552272 0 0 0-46.538636-46.538636z"></path>
-                            </svg>
-                        </button>
+            <div class="col-12 col-md-6 mb-3 p-md-3">
+                <div class="card TabStationCard3" id="mapPanel">
+                    <div class="card-header" @click="loadMapLine(true, true);">
+                        <span>线路走向</span>
                     </div>
-                    <div class="btn-group btn-group-sm pull-right" role="group" style="float: right">
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'watch' }" @click="setMapTool('watch')" title="看图模式 [1]">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-hand-index" viewBox="0 0 16 16">
-                                <path d="M6.75 1a.75.75 0 0 1 .75.75V8a.5.5 0 0 0 1 0V5.467l.086-.004c.317-.012.637-.008.816.027.134.027.294.096.448.182.077.042.15.147.15.314V8a.5.5 0 1 0 1 0V6.435a4.9 4.9 0 0 1 .106-.01c.316-.024.584-.01.708.04.118.046.3.207.486.43.081.096.15.19.2.259V8.5a.5.5 0 0 0 1 0v-1h.342a1 1 0 0 1 .995 1.1l-.271 2.715a2.5 2.5 0 0 1-.317.991l-1.395 2.442a.5.5 0 0 1-.434.252H6.035a.5.5 0 0 1-.416-.223l-1.433-2.15a1.5 1.5 0 0 1-.243-.666l-.345-3.105a.5.5 0 0 1 .399-.546L5 8.11V9a.5.5 0 0 0 1 0V1.75A.75.75 0 0 1 6.75 1zM8.5 4.466V1.75a1.75 1.75 0 1 0-3.5 0v5.34l-1.2.24a1.5 1.5 0 0 0-1.196 1.636l.345 3.106a2.5 2.5 0 0 0 .405 1.11l1.433 2.15A1.5 1.5 0 0 0 6.035 16h6.385a1.5 1.5 0 0 0 1.302-.756l1.395-2.441a3.5 3.5 0 0 0 .444-1.389l.271-2.715a2 2 0 0 0-1.99-2.199h-.581a5.114 5.114 0 0 0-.195-.248c-.191-.229-.51-.568-.88-.716-.364-.146-.846-.132-1.158-.108l-.132.012a1.26 1.26 0 0 0-.56-.642 2.632 2.632 0 0 0-.738-.288c-.31-.062-.739-.058-1.05-.046l-.048.002zm2.094 2.025z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'newStationSmart' }" @click="setMapTool('newStationSmart')" title="智能设站模式 [2]">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-down-circle" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V4.5z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'newStation' }" @click="setMapTool('newStation')" title="新建站点模式 [3]">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
-                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'newWaypoint' }" @click="setMapTool('newWaypoint')" title="新建途经点模式 [4]">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="btn-group btn-group-sm pull-right me-2" role="group" style="float: right">
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapMode == 'before' }" @click="setMapMode('before')" title="在当前节点前操作">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M8 10a.5.5 0 0 0 .5-.5V3.707l2.146 2.147a.5.5 0 0 0 .708-.708l-3-3a.5.5 0 0 0-.708 0l-3 3a.5.5 0 1 0 .708.708L7.5 3.707V9.5a.5.5 0 0 0 .5.5zm-7 2.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1-.5-.5z"/>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapMode == 'after' }" @click="setMapMode('after')" title="在当前节点后操作">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-bar-down" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M1 3.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1-.5-.5zM8 6a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 .708-.708L7.5 12.293V6.5A.5.5 0 0 1 8 6z"/>
-                            </svg>
-                        </button>
+                    <div class="card-body" id="amap"></div>
+                    <div class="card-footer">
+                        <div class="btn-group btn-group-sm pull-right" role="group" style="float: left">
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: satelliteEnabled }" @click="setSatelliteLayer()" title="卫星图层">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
+                                    <path d="M702.171429 752.55873c27.631746 0 48.761905-21.130159 48.761904-47.136508 0-11.377778-4.87619-22.755556-11.377777-30.882539l39.009523-39.009524c19.504762-19.504762 19.504762-50.387302 0-68.266667l-206.425396-206.425397 92.647619-92.647619 94.273015 94.273016c19.504762 19.504762 50.387302 19.504762 68.266667 0l32.507937-32.507936c19.504762-19.504762 19.504762-50.387302 0-68.266667l-235.68254-235.68254c-19.504762-19.504762-50.387302-19.504762-68.266667 0l-32.507936 32.507937c-19.504762 19.504762-19.504762 50.387302 0 68.266666l94.273016 94.273016-92.647619 92.647619-206.425397-206.425397c-19.504762-19.504762-50.387302-19.504762-68.266667 0l-152.787301 152.787302c-19.504762 19.504762-19.504762 50.387302 0 68.266667l206.425396 206.425397-92.647619 92.647619-94.273016-94.273016c-19.504762-19.504762-50.387302-19.504762-68.266666 0l-32.507937 32.507936c-19.504762 19.504762-19.504762 50.387302 0 68.266667l235.68254 235.68254c19.504762 19.504762 50.387302 19.504762 68.266667 0l32.507936-32.507937c19.504762-19.504762 19.504762-50.387302 0-68.266667l-94.273016-94.273015 92.647619-92.64762 206.425397 206.425397c19.504762 19.504762 50.387302 19.504762 68.266667 0l45.511111-45.511111c8.126984 6.501587 19.504762 9.752381 30.88254 9.752381z" p-id="7032"></path><path d="M897.219048 658.285714h-71.517461c0 43.885714-17.879365 86.146032-50.387301 117.028572-32.507937 30.88254-76.393651 48.761905-123.530159 48.761904v68.266667c136.533333 0 245.434921-105.650794 245.434921-234.057143z" p-id="7033"></path><path d="M952.48254 658.285714c0 157.663492-134.907937 286.069841-299.073016 286.069842v68.266666c204.8 0 370.590476-159.288889 370.590476-352.711111h-71.51746z"></path>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: mapEnabled }" @click="setMapLayer()" title="地图图层">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-map" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M15.817.113A.5.5 0 0 1 16 .5v14a.5.5 0 0 1-.402.49l-5 1a.502.502 0 0 1-.196 0L5.5 15.01l-4.902.98A.5.5 0 0 1 0 15.5v-14a.5.5 0 0 1 .402-.49l5-1a.5.5 0 0 1 .196 0L10.5.99l4.902-.98a.5.5 0 0 1 .415.103zM10 1.91l-4-.8v12.98l4 .8V1.91zm1 12.98 4-.8V1.11l-4 .8v12.98zm-6-.8V1.11l-4 .8v12.98l4-.8z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" @click="elementFullScreen('mapPanel')" title="面板全屏">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-window-fullscreen" viewBox="0 0 16 16">
+                                    <path d="M3 3.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Zm1.5 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0Zm1 .5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1Z"/>
+                                    <path d="M.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-13a.5.5 0 0 0-.5-.5H.5ZM1 5V2h14v3H1Zm0 1h14v8H1V6Z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" @click="setMapTool('watch');elementFullScreen('amap')" title="地图全屏">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" @click="showMapSettings()" title="地图设置">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear-wide-connected" viewBox="0 0 16 16">
+                                    <path d="M7.068.727c.243-.97 1.62-.97 1.864 0l.071.286a.96.96 0 0 0 1.622.434l.205-.211c.695-.719 1.888-.03 1.613.931l-.08.284a.96.96 0 0 0 1.187 1.187l.283-.081c.96-.275 1.65.918.931 1.613l-.211.205a.96.96 0 0 0 .434 1.622l.286.071c.97.243.97 1.62 0 1.864l-.286.071a.96.96 0 0 0-.434 1.622l.211.205c.719.695.03 1.888-.931 1.613l-.284-.08a.96.96 0 0 0-1.187 1.187l.081.283c.275.96-.918 1.65-1.613.931l-.205-.211a.96.96 0 0 0-1.622.434l-.071.286c-.243.97-1.62.97-1.864 0l-.071-.286a.96.96 0 0 0-1.622-.434l-.205.211c-.695.719-1.888.03-1.613-.931l.08-.284a.96.96 0 0 0-1.186-1.187l-.284.081c-.96.275-1.65-.918-.931-1.613l.211-.205a.96.96 0 0 0-.434-1.622l-.286-.071c-.97-.243-.97-1.62 0-1.864l.286-.071a.96.96 0 0 0 .434-1.622l-.211-.205c-.719-.695-.03-1.888.931-1.613l.284.08a.96.96 0 0 0 1.187-1.186l-.081-.284c-.275-.96.918-1.65 1.613-.931l.205.211a.96.96 0 0 0 1.622-.434l.071-.286zM12.973 8.5H8.25l-2.834 3.779A4.998 4.998 0 0 0 12.973 8.5zm0-1a4.998 4.998 0 0 0-7.557-3.779l2.834 3.78h4.723zM5.048 3.967c-.03.021-.058.043-.087.065l.087-.065zm-.431.355A4.984 4.984 0 0 0 3.002 8c0 1.455.622 2.765 1.615 3.678L7.375 8 4.617 4.322zm.344 7.646.087.065-.087-.065z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: mapItems.lineMap.length }" @click="showLineMap()" title="线网">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 1024 1024" fill="currentColor">
+                                    <path d="M372.350001 0v279.259092h240.629159A139.984074 139.984074 0 0 1 698.147729 194.090523V0h93.090909v194.13143a139.970438 139.970438 0 0 1 85.168569 85.182204h147.53825v93.090909H876.3663a140.065888 140.065888 0 0 1-85.086755 85.127662v54.542791A232.720455 232.720455 0 0 1 568.6086 744.509102l-10.104053 0.231806H457.477662a139.99771 139.99771 0 0 1-85.086754 85.127662v194.13143h-93.131816V829.86857a139.970438 139.970438 0 0 1-85.127662-85.182204H0v-93.077274h194.090523a140.011345 140.011345 0 0 1 85.168569-85.182204V372.350001H0V279.259092h279.259092V0z m-46.552273 651.609092A46.538637 46.538637 0 1 0 372.336365 698.147729a46.525001 46.525001 0 0 0-46.538637-46.538637z m287.222339-279.259091h-240.670066v194.13143a139.984074 139.984074 0 0 1 85.168568 85.168568h100.999614a139.643181 139.643181 0 0 0 139.397739-131.448127l0.231807-8.181418v-54.501885a140.024981 140.024981 0 0 1-85.127662-85.168568z m131.666299-93.090909a46.552272 46.552272 0 1 0 46.538636 46.538636 46.552272 46.552272 0 0 0-46.538636-46.538636z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="btn-group btn-group-sm pull-right" role="group" style="float: right">
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'watch' }" @click="setMapTool('watch')" title="看图模式 [1]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-hand-index" viewBox="0 0 16 16">
+                                    <path d="M6.75 1a.75.75 0 0 1 .75.75V8a.5.5 0 0 0 1 0V5.467l.086-.004c.317-.012.637-.008.816.027.134.027.294.096.448.182.077.042.15.147.15.314V8a.5.5 0 1 0 1 0V6.435a4.9 4.9 0 0 1 .106-.01c.316-.024.584-.01.708.04.118.046.3.207.486.43.081.096.15.19.2.259V8.5a.5.5 0 0 0 1 0v-1h.342a1 1 0 0 1 .995 1.1l-.271 2.715a2.5 2.5 0 0 1-.317.991l-1.395 2.442a.5.5 0 0 1-.434.252H6.035a.5.5 0 0 1-.416-.223l-1.433-2.15a1.5 1.5 0 0 1-.243-.666l-.345-3.105a.5.5 0 0 1 .399-.546L5 8.11V9a.5.5 0 0 0 1 0V1.75A.75.75 0 0 1 6.75 1zM8.5 4.466V1.75a1.75 1.75 0 1 0-3.5 0v5.34l-1.2.24a1.5 1.5 0 0 0-1.196 1.636l.345 3.106a2.5 2.5 0 0 0 .405 1.11l1.433 2.15A1.5 1.5 0 0 0 6.035 16h6.385a1.5 1.5 0 0 0 1.302-.756l1.395-2.441a3.5 3.5 0 0 0 .444-1.389l.271-2.715a2 2 0 0 0-1.99-2.199h-.581a5.114 5.114 0 0 0-.195-.248c-.191-.229-.51-.568-.88-.716-.364-.146-.846-.132-1.158-.108l-.132.012a1.26 1.26 0 0 0-.56-.642 2.632 2.632 0 0 0-.738-.288c-.31-.062-.739-.058-1.05-.046l-.048.002zm2.094 2.025z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'newStationSmart' }" @click="setMapTool('newStationSmart')" title="智能设站模式 [2]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-down-circle" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V4.5z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'newStation' }" @click="setMapTool('newStation')" title="新建站点模式 [3]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapTool == 'newWaypoint' }" @click="setMapTool('newWaypoint')" title="新建途经点模式 [4]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="btn-group btn-group-sm pull-right me-2" role="group" style="float: right">
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapMode == 'before' }" @click="setMapMode('before')" title="在当前节点前操作">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M8 10a.5.5 0 0 0 .5-.5V3.707l2.146 2.147a.5.5 0 0 0 .708-.708l-3-3a.5.5 0 0 0-.708 0l-3 3a.5.5 0 1 0 .708.708L7.5 3.707V9.5a.5.5 0 0 0 .5.5zm-7 2.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1-.5-.5z"/>
+                                </svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" :class="{ active: selectedMapMode == 'after' }" @click="setMapMode('after')" title="在当前节点后操作">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-bar-down" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M1 3.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1-.5-.5zM8 6a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 .708-.708L7.5 12.293V6.5A.5.5 0 0 1 8 6z"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -363,7 +342,6 @@ app.component('tab-station', {
     `,
     data() {
         return {
-            componentVersion: '1.3.2',
             cityName: '',
             selectedDirection: 'up',
             selectedNode: 0,
@@ -385,18 +363,10 @@ app.component('tab-station', {
                 infowindow: VueReactivity.shallowRef(null),
                 satelliteLayer: VueReactivity.shallowRef(null),
                 labelsLayer: VueReactivity.shallowRef(null),
-                lineMap: VueReactivity.shallowRef([])
+                lineMap: VueReactivity.shallowRef([]),
             },
-            settings: {
-                mainDirection: 0,
-                showStationName: "1",
-                showOpposite: "0.4",
-                mapStyle: "amap://styles/normal",
-                stationLightness: -64,
-                lineStrokeWidth: 6,
-                stationStrokeWidth: 2,
-                stationFillRadius: 5
-            },
+            fileInput: VueReactivity.shallowRef(null),
+            fileReader: VueReactivity.shallowRef(null),
             chrome: true
         }
     },
@@ -417,14 +387,14 @@ app.component('tab-station', {
                     resizeEnable: true,
                     features: ['bg', 'road', 'point'],
                     defaultCursor: 'move',
-                    mapStyle: this.settings.mapStyle
+                    mapStyle: this.settings.map.mapStyle.current
                 });
 
                 this.mapItems.labelsLayer = new AMap.LabelsLayer({
                     zooms: [3, 20],
                     zIndex: 120,
                     visible: true,
-                    collision: parseInt(this.settings.showStationName),
+                    collision: parseInt(this.settings.map.showStationName.current),
                     animation: true,
                 });
                 
@@ -437,7 +407,7 @@ app.component('tab-station', {
                 this.map.resize();
                 this.chrome = AMap.Browser.chrome; // Browser check
             }).catch((e)=>{
-                console.error(e);
+                this.$emit('toast', ['地图加载失败', '', '地图加载失败，可能是网络问题？', false]);
             });
             /* map.setFeatures(['bg', 'road']); */
             return;
@@ -656,7 +626,7 @@ app.component('tab-station', {
                 this.selectedNode = 0;
             }
 
-            //刷新地图
+            // 刷新地图
             this.loadMapLine(false);
         },
         // newNode => autoRenameStation
@@ -668,7 +638,7 @@ app.component('tab-station', {
                 this.nodes[this.selectedNode].name = '新站点 #'+ this.positionId(this.nodes[this.selectedNode].lng, this.nodes[this.selectedNode].lat);
             }
 
-            if(this.settings.showStationName){
+            if(this.settings.map.showStationName.current){
                 this.loadMapLine(false);
             }
         },
@@ -747,6 +717,7 @@ app.component('tab-station', {
             try{
                 this.mapItems.infoWindow.close();
             }catch(e){}
+
             if(this.selectedNode == index){
                 this.mapItems.infoWindow = new AMap.InfoWindow({
                     content: this.nodes[this.selectedNode].name + "<br /><small>(" + this.nodes[this.selectedNode].lng + ", "
@@ -759,7 +730,11 @@ app.component('tab-station', {
                 this.selectedNode = index;
                 this.lastSelectedWayPoint = null;
             }
+
             if(this.renameEnabled){
+                if(this.nodes[this.selectedNode].name.indexOf("新站点 #") === 0 || this.nodes[this.selectedNode].name.indexOf("途经点 #") === 0){
+                    this.nodes[this.selectedNode].name = '';
+                }
                 this.loadMapLine(false);
             }
             if(setCenter){
@@ -888,10 +863,15 @@ app.component('tab-station', {
         // setRenameMode
         // 开关重命名模式
         setRenameMode(){
-            if(!this.renameEnabled){
-                this.saveOriginal();
-            }
             this.renameEnabled = !this.renameEnabled;
+
+            if(this.renameEnabled){
+                this.saveOriginal();
+                if(this.nodes[this.selectedNode].name.indexOf("新站点 #") === 0 || this.nodes[this.selectedNode].name.indexOf("途经点 #") === 0){
+                    this.nodes[this.selectedNode].name = '';
+                }
+            }
+
             this.loadMapLine(false);
         },
         // renameKeyPress
@@ -902,6 +882,22 @@ app.component('tab-station', {
                 this.setRenameMode();
             }
         },
+        // checkColor
+        // 检测是否为合法的颜色值
+        checkColor() {
+            var regex = /^#[0-9A-F]{6}$/i;
+            if(this.line.lineColor.indexOf('#') !== 0){
+                this.line.lineColor = '#' + this.line.lineColor;
+            }
+
+            if(!regex.test(this.line.lineColor)){
+                this.$emit('toast', ['颜色错误', '', this.line.lineColor.slice(1) + ' 不是合法的六位十六进制颜色值…', false]);
+                this.line.lineColor = '#00D3FC';
+            }
+
+            this.loadMapLine(false);
+        },
+
         // reverseDirection
         // 反转上下行
         reverseDirection(){
@@ -929,6 +925,7 @@ app.component('tab-station', {
                 this.line.cityName = result.districtList[0].name;
                 this.map.setCity(result.districtList[0].adcode);
             }else{
+                this.$emit('toast', ['地区错误', '', this.cityName + ' 不是合法的地区…', false]);
                 this.cityName = this.line.cityName;
             }
         },
@@ -942,14 +939,19 @@ app.component('tab-station', {
             this.renameEnabled = false;
             this.cityName = this.line.cityName;
             this.$nextTick(() => {
-                document.getElementById('lineColor').jscolor.fromString(this.line.lineColor || "#00D3FC");
+                document.getElementById('lineColor').jscolor.fromString(this.line.lineColor);
                 this.loadMapLine(true, true);
             });
         },
 
         // loadMapLine
-        // 在地图上重新绘制线路
+        // 在地图上绘制线路
         loadMapLine(resetCenter = true, resizeMap = false){
+            // 加载设置项
+            this.mapItems.labelsLayer.setCollision(parseInt(this.settings.map.showStationName.current));
+            this.map.setMapStyle(this.settings.map.mapStyle.current);
+
+            // 清除地图元素
             try {
                 if(this.mapItems.polyline){
                     this.map.remove(this.mapItems.polyline);
@@ -979,128 +981,35 @@ app.component('tab-station', {
                     this.mapItems.infoWindow.close();
                 }
             } catch(e) {}
-            if(this.nodes.length){
-                var path = [];
-                this.nodes.forEach((node) => {
-                    path.push(new AMap.LngLat(node.lng, node.lat));
-                });
-                this.mapItems.polyline = new AMap.Polyline({
-                    path: path,
-                    zIndex: 15,
-                    strokeWeight: this.settings.lineStrokeWidth,
-                    strokeColor: this.line.lineColor || (this.line.lineColor = "#00D3FC"),
-                    strokeOpacity: 1,
-                    showDir: true,
-                    lineJoin: 'round',
-                    lineCap: 'round'
-                });
-                this.mapItems.polyline.on('click', this.clickPolyline, this);
-                var stationImage = this.getStationImage();
-                this.stations.forEach((station) => {
-                    var marker = new AMap.Marker({
-                        position: new AMap.LngLat(station.lng, station.lat),
-                        zIndex: 18,
-                        offset: new AMap.Pixel(0, 0),
-                        anchor: 'center',
-                        icon: stationImage,
-                        extData: station.id,
-                    });
-                    marker.on('click', this.clickNode, this);
-                    this.mapItems.markers.push(marker);
 
-                    if(this.settings.showStationName != "0"){
-                        var position = this.roadNamePosition(this.trueDirection, station.id);
-                        var text = new AMap.LabelMarker({
-                            name: station.name,
-                            position: new AMap.LngLat(station.lng, station.lat),
-                            zIndex: 20,
-                            rank: 2,
-                            text: {
-                                content: station.name,
-                                direction: position.direc,
-                                offset: position.offset,
-                                style: {
-                                    fontSize: 12,
-                                    fontWeight: 'normal',
-                                    fillColor: 'black',
-                                    strokeColor: 'white',
-                                    strokeWidth: 4
-                                }
-                            }
-                        });
-                        this.mapItems.texts.push(text);
-                    }
-                });
-                if(this.mapItems.texts.length){
-                    this.mapItems.texts[this.mapItems.texts.length - 1].setRank(4);
-                    this.mapItems.texts[0].setRank(5);
-                }
+            // 绘制线路
+            if(this.nodes.length){
+                this.mapItems.polyline = this.generatePolyline(this.nodes, 1, this.line.lineColor, 15);
+                this.mapItems.polyline.on('click', this.clickPolyline, this);
+                var stations = this.generateMarkers(this.stations, 18, 1, this.line.lineColor, this.trueDirection, true, parseFloat(this.settings.map.showStationName.current), 2);
+                this.mapItems.markers = stations.markers;
+                this.mapItems.texts = stations.labels;
 
                 this.map.add(this.mapItems.polyline);
                 this.map.add(this.mapItems.markers);
                 this.mapItems.labelsLayer.add(this.mapItems.texts);
             }
 
+            // 绘制反向线路
             var opposite = this.trueDirection == 'up'?'down':'up';
-            if(this.isBilateral && this.settings.showOpposite != "0" && this.line.route[opposite].length){
-                var pathOpposite = [];
-                this.line.route[opposite].forEach(node => {
-                    pathOpposite.push(new AMap.LngLat(node.lng, node.lat));
-                });
-                this.mapItems.polylineOpposite = new AMap.Polyline({
-                    path: pathOpposite,
-                    zIndex: 10,
-                    strokeWeight: this.settings.lineStrokeWidth,
-                    strokeColor: this.line.lineColor,
-                    strokeOpacity: parseFloat(this.settings.showOpposite),
-                    showDir: true,
-                    lineJoin: 'round',
-                    lineCap: 'round'
-                });
+            if(this.isBilateral && this.settings.map.showOpposite.current != "0" && this.line.route[opposite].length){
+                this.mapItems.polylineOpposite = this.generatePolyline(this.line.route[opposite], parseFloat(this.settings.map.showOpposite.current), this.line.lineColor, 14);
                 this.mapItems.polylineOpposite.on('click', this.clickPolyline, this);
-                var stationImage = this.getStationImage(this.settings.showOpposite != "1");
-                this.line.route[opposite].forEach((node, index) => {
-                    if(node.type == "station"){
-                        var marker = new AMap.Marker({
-                            position: new AMap.LngLat(node.lng, node.lat),
-                            zIndex: 11,
-                            offset: new AMap.Pixel(0, 0),
-                            anchor: 'center',
-                            icon: stationImage,
-                            extData: -1
-                        });
-                        marker.on('click', this.clickNode, this);
-                        this.mapItems.markersOpposite.push(marker);
+                var stations = this.generateMarkers(this.line.route[opposite], 17, parseFloat(this.settings.map.showOpposite.current), this.line.lineColor, opposite, false, parseFloat(this.settings.map.showStationName.current), 1);
+                this.mapItems.markersOpposite = stations.markers;
+                this.mapItems.textsOpposite = stations.labels;
 
-                        if(this.settings.showStationName != "0"){
-                            var position = this.roadNamePosition(opposite, index);
-                            var text = new AMap.LabelMarker({
-                                name: node.name,
-                                position: new AMap.LngLat(node.lng, node.lat),
-                                zIndex: 20,
-                                rank: 1,
-                                opacity: parseFloat(this.settings.showOpposite),
-                                text: {
-                                    content: node.name,
-                                    direction: position.direc,
-                                    offset: position.offset,
-                                    style: {
-                                        fontSize: 12,
-                                        fontWeight: 'normal',
-                                        fillColor: 'black',
-                                        strokeColor: 'white',
-                                        strokeWidth: 4
-                                    }
-                                }
-                            });
-                            this.mapItems.textsOpposite.push(text);
-                        }
-                    }
-                });
                 this.map.add(this.mapItems.polylineOpposite);
                 this.map.add(this.mapItems.markersOpposite);
                 this.mapItems.labelsLayer.add(this.mapItems.textsOpposite);
             }
+
+            // 杂项
             if(resizeMap){
                 this.map.resize();
             }
@@ -1111,69 +1020,103 @@ app.component('tab-station', {
 
         // appendLineToLineMap
         // 添加当前线路至线网
-        appendLineToLineMap(){
+        appendLineToLineMap(lineFile){
+            lineFile = lineFile ?? this.line;
+
             var newLineOnLineMap = {
-                lineName: this.line.lineName,
-                lineType: this.line.lineType,
-                polylineUp: null,
-                polylineDown: null,
-                showLineUp: false,
-                showLineDown: false
+                data: {
+                    lineFile: deepClone(lineFile),
+                },
+                figure: {
+                    polylineUp: null,
+                    polylineDown: null,
+                    stationsUp: [],
+                    stationsDown: []
+                },
+                config: {
+                    showLineUp: false,
+                    showLineDown: false,
+                    showStations: false
+                }
             };
 
-            if(this.line.route.up.length){
-                var pathUp = [];
-                this.line.route.up.forEach(node => {
-                    pathUp.push(new AMap.LngLat(node.lng, node.lat));
-                });
-                newLineOnLineMap.polylineUp = new AMap.Polyline({
-                    path: pathUp,
-                    zIndex: 15,
-                    strokeWeight: this.settings.lineStrokeWidth,
-                    strokeColor: this.line.lineColor,
-                    strokeOpacity: 1,
-                    showDir: true,
-                    lineJoin: 'round',
-                    lineCap: 'round'
-                });
-                newLineOnLineMap.polylineUp.on('click', this.clickPolyline, this);
-                this.map.add(newLineOnLineMap.polylineUp);
-                newLineOnLineMap.showLineUp = true;
+            if(lineFile.route.up.length){
+                newLineOnLineMap.figure.polylineUp = this.generatePolyline(lineFile.route.up, 1, lineFile.lineColor, 13);
+                newLineOnLineMap.figure.polylineUp.on('click', this.clickPolyline, this);
+                this.map.add(newLineOnLineMap.figure.polylineUp);
+                newLineOnLineMap.config.showLineUp = true;
+
+                newLineOnLineMap.figure.stationsUp = this.generateMarkers(lineFile.route.up, 15, 1, lineFile.lineColor, 'up', false, false).markers;
+                this.map.add(newLineOnLineMap.figure.stationsUp);
+                newLineOnLineMap.config.showStations = true;
             }
-            if(this.isBilateral && this.line.route.down.length){
-                var pathDown = [];
-                this.line.route.down.forEach(node => {
-                    pathDown.push(new AMap.LngLat(node.lng, node.lat));
-                });
-                newLineOnLineMap.polylineDown = new AMap.Polyline({
-                    path: pathDown,
-                    zIndex: 15,
-                    strokeWeight: this.settings.lineStrokeWidth,
-                    strokeColor: this.line.lineColor,
-                    strokeOpacity: 1,
-                    showDir: true,
-                    lineJoin: 'round',
-                    lineCap: 'round'
-                });
-                newLineOnLineMap.polylineDown.on('click', this.clickPolyline, this);
-                this.map.add(newLineOnLineMap.polylineDown);
-                newLineOnLineMap.showLineDown = true;
+            if((lineFile.lineType % 2) == 1 && lineFile.route.down.length){
+                newLineOnLineMap.figure.polylineDown = this.generatePolyline(lineFile.route.down, 1, lineFile.lineColor, 12);
+                newLineOnLineMap.figure.polylineDown.on('click', this.clickPolyline, this);
+                this.map.add(newLineOnLineMap.figure.polylineDown);
+                newLineOnLineMap.config.showLineDown = true;
+
+                newLineOnLineMap.figure.stationsDown = this.generateMarkers(lineFile.route.down, 15, 1, lineFile.lineColor, 'down', false, false).markers;
+                this.map.add(newLineOnLineMap.figure.stationsDown);
+                newLineOnLineMap.config.showStations = true;
             }
 
             this.mapItems.lineMap.push(newLineOnLineMap);
             this.$forceUpdate();
         },
 
+        // editLineOfLineMap
+        // 编辑线网中的线路
+        editLineOfLineMap(index){
+            this.$emit('loadline', this.mapItems.lineMap[index].data.lineFile);
+            this.removeLineFromLineMap(index);
+            this.loadLine();
+            this.$emit('toast', ['编辑线路', '', '当前线路已被移出线网，编辑完成后不要忘记加回线网哦~', false]);
+            this.$forceUpdate();
+        },
+
         // removeLineFromLineMap
         // 从线网中移除线路
         removeLineFromLineMap(index){
-            if(this.mapItems.lineMap[index].showLineUp){
-                this.map.remove(this.mapItems.lineMap[index].polylineUp);
+            if(this.mapItems.lineMap[index].config.showLineUp){
+                this.map.remove(this.mapItems.lineMap[index].figure.polylineUp);
+                if(this.mapItems.lineMap[index].config.showStations){
+                    this.map.remove(this.mapItems.lineMap[index].figure.stationsUp);
+                }
             }
-            if(this.mapItems.lineMap[index].showLineDown){
-                this.map.remove(this.mapItems.lineMap[index].polylineDown);
+            if(this.mapItems.lineMap[index].config.showLineDown){
+                this.map.remove(this.mapItems.lineMap[index].figure.polylineDown);
+                if(this.mapItems.lineMap[index].config.showStations){
+                    this.map.remove(this.mapItems.lineMap[index].figure.stationsDown);
+                }
             }
             this.mapItems.lineMap.splice(index, 1);
+            this.$forceUpdate();
+        },
+
+        // setShowStationsOfLineMap
+        // 设置站点是否显示
+        setShowStationsOfLineMap(index){
+            if(!this.mapItems.lineMap[index].config.showLineUp && !this.mapItems.lineMap[index].config.showLineDown){
+                return;
+            }
+
+            if(this.mapItems.lineMap[index].config.showStations){
+                if(this.mapItems.lineMap[index].config.showLineUp){
+                    this.map.remove(this.mapItems.lineMap[index].figure.stationsUp);
+                }
+                if(this.mapItems.lineMap[index].config.showLineDown){
+                    this.map.remove(this.mapItems.lineMap[index].figure.stationsDown);
+                }
+            }else{
+                if(this.mapItems.lineMap[index].config.showLineUp){
+                    this.map.add(this.mapItems.lineMap[index].figure.stationsUp);
+                }
+                if(this.mapItems.lineMap[index].config.showLineDown){
+                    this.map.add(this.mapItems.lineMap[index].figure.stationsDown);
+                }
+            }
+            this.mapItems.lineMap[index].config.showStations = !this.mapItems.lineMap[index].config.showStations;
             this.$forceUpdate();
         },
 
@@ -1181,21 +1124,45 @@ app.component('tab-station', {
         // 设置线路某方向是否显示
         setShowLineOfLineMap(index, direction){
             if(direction == 'up'){
-                if(this.mapItems.lineMap[index].showLineUp){
-                    this.map.remove(this.mapItems.lineMap[index].polylineUp);
+                if(this.mapItems.lineMap[index].config.showLineUp){
+                    this.map.remove(this.mapItems.lineMap[index].figure.polylineUp);
+                    if(this.mapItems.lineMap[index].config.showStations){
+                        this.map.remove(this.mapItems.lineMap[index].figure.stationsUp);
+                    }
                 }else{
-                    this.map.add(this.mapItems.lineMap[index].polylineUp);
+                    this.map.add(this.mapItems.lineMap[index].figure.polylineUp);
+                    if(this.mapItems.lineMap[index].config.showStations){
+                        this.map.add(this.mapItems.lineMap[index].figure.stationsUp);
+                    }
                 }
-                this.mapItems.lineMap[index].showLineUp = !this.mapItems.lineMap[index].showLineUp;
+                this.mapItems.lineMap[index].config.showLineUp = !this.mapItems.lineMap[index].config.showLineUp;
             }else{
-                if(this.mapItems.lineMap[index].showLineDown){
-                    this.map.remove(this.mapItems.lineMap[index].polylineDown);
+                if(this.mapItems.lineMap[index].config.showLineDown){
+                    this.map.remove(this.mapItems.lineMap[index].figure.polylineDown);
+                    if(this.mapItems.lineMap[index].config.showStations){
+                        this.map.remove(this.mapItems.lineMap[index].figure.stationsDown);
+                    }
                 }else{
-                    this.map.add(this.mapItems.lineMap[index].polylineDown);
+                    this.map.add(this.mapItems.lineMap[index].figure.polylineDown);
+                    if(this.mapItems.lineMap[index].config.showStations){
+                        this.map.add(this.mapItems.lineMap[index].figure.stationsDown);
+                    }
                 }
-                this.mapItems.lineMap[index].showLineDown = !this.mapItems.lineMap[index].showLineDown;
+                this.mapItems.lineMap[index].config.showLineDown = !this.mapItems.lineMap[index].config.showLineDown;
             }
             this.$forceUpdate();
+        },
+
+        // downloadLineMap
+        // 保存线网
+        downloadLineMap(){
+            var file = {lines: []};
+            this.mapItems.lineMap.forEach(line => {
+                file.lines.push(line.data.lineFile);
+            });
+
+            downloadFile('线网.json', JSON.stringify(file), "application/json");
+            this.$emit('toast', ['保存线网', '', '保存线网成功~']);
         },
 
         // checkDirection
@@ -1228,6 +1195,40 @@ app.component('tab-station', {
             m.show();
         },
 
+        // getFile
+        // 打开文件选择框
+        getFile() {
+            if(document.createEvent) {
+                var event = document.createEvent('MouseEvents');
+                event.initEvent('click', true, true);
+                this.fileInput.dispatchEvent(event);
+            }
+            else {
+                this.fileInput.click();
+            }
+        },
+        // readFile
+        // 读取文件
+        readFile() {
+            if(!this.fileInput.files.length){
+                return;
+            }
+            this.fileReader.readAsText(this.fileInput.files[0]);
+        },
+        loadLineMap(){
+            try{
+                var lines = JSON.parse(this.fileReader.result);
+                lines.lines.forEach(line => {
+                    this.appendLineToLineMap(line);
+                });
+            }catch(e){
+                this.$emit('toast', ["读取线网", "", "读取线网失败: " + e, false]);
+                return;
+            }
+            this.loadLine();
+            this.$emit('toast', ["读取线网", "", "读取线网成功~"]);
+        },
+
         // positionId
         // 根据经纬度返回一个编码过的神秘序号
         // 别问，问就是避免不同节点同名或同节点不同名
@@ -1235,19 +1236,93 @@ app.component('tab-station', {
             return ('00000000' + Math.abs(CRC32C.str('(' + lng + ',' + lat + ')')).toString(16).toUpperCase()).slice(-8);
         },
 
-        // getStationImage
+        // generatePolyline
+        // 根据线路生成折线
+        generatePolyline(route, opacity, color, zIndex){
+            var path = [];
+            route.forEach(node => {
+                path.push(new AMap.LngLat(node.lng, node.lat));
+            });
+            var polyline = new AMap.Polyline({
+                path: path,
+                zIndex: zIndex,
+                strokeWeight: this.settings.map.lineStrokeWidth.current,
+                strokeColor: color,
+                strokeOpacity: opacity,
+                showDir: true,
+                lineJoin: 'round',
+                lineCap: 'round'
+            });
+
+            return polyline;
+        },
+        // generateMarkers
+        // 根据站点生成标记点
+        generateMarkers(nodes, zIndex, opacity, color, direc, setExtData, generateStationName = false, rank = 0){
+            var stationImage = this.generateStationImage(opacity, color);
+            var markers = [];
+            var labels = [];
+            nodes.forEach((node, index) => {
+                if(node.type == 'station'){
+                    var marker = new AMap.Marker({
+                        position: new AMap.LngLat(node.lng, node.lat),
+                        zIndex: zIndex,
+                        offset: new AMap.Pixel(0, 0),
+                        anchor: 'center',
+                        icon: stationImage,
+                        extData: setExtData ? node.id : null,
+                    });
+                    marker.on('click', this.clickNode, this);
+                    markers.push(marker);
+
+                    if(generateStationName){
+                        var position = this.roadNamePosition(direc, node.id ?? index);
+                        var text = new AMap.LabelMarker({
+                            name: node.name,
+                            position: new AMap.LngLat(node.lng, node.lat),
+                            zIndex: zIndex + 2,
+                            rank: rank,
+                            opacity: opacity,
+                            text: {
+                                content: node.name,
+                                direction: position.direc,
+                                offset: position.offset,
+                                style: {
+                                    fontSize: 12,
+                                    fontWeight: 'normal',
+                                    fillColor: 'black',
+                                    strokeColor: 'white',
+                                    strokeWidth: 4
+                                }
+                            }
+                        });
+                        labels.push(text);
+                    }
+                    if(labels.length){
+                        labels[labels.length - 1].setRank(rank + 3);
+                        labels[0].setRank(rank + 4);
+                    }
+                }
+            });
+
+            return {
+                markers: markers,
+                labels: labels
+            };
+        },
+        // generateStationImage
         // 根据颜色生成站点svg的 Data URL
-        getStationImage(opacity = false){
-            if(this.settings.stationLightness == "origin"){
+        generateStationImage(opacity, color){
+            if(this.settings.map.stationLightness.current == "origin"){
                 return './assets/station.png';
             }else{
                 var prefix = "data:image/svg+xml;base64,";
-                var color = this.colorLightness(this.line.lineColor, parseInt(this.settings.stationLightness));
-                var side = 2 * this.settings.stationFillRadius + this.settings.stationStrokeWidth;
+                var color = this.colorLightness(color, parseInt(this.settings.map.stationLightness.current));
+                var side = 2 * this.settings.map.stationFillRadius.current + this.settings.map.stationStrokeWidth.current;
                 var svg = "<svg xmlns='http://www.w3.org/2000/svg' version='2' width='" + side + "' height='" + side + "'>" + 
                     "<circle cx='" + (side / 2) + "' cy='" + (side / 2) +
-                    "' r='" + this.settings.stationFillRadius + "' stroke='" + color + "' stroke-width='" + this.settings.stationStrokeWidth + "' " + 
-                    (opacity?"stroke-opacity='0.4' ":"") + "fill='white' /></svg>";
+                    "' r='" + this.settings.map.stationFillRadius.current + "' stroke='" + color + "' stroke-width='" + this.settings.map.stationStrokeWidth.current + "' " + 
+                    "stroke-opacity='" + opacity + "' fill='white' /></svg>";
                 return prefix + window.btoa(svg);
             }
         },
@@ -1273,6 +1348,7 @@ app.component('tab-station', {
         // roadNamePosition
         // 计算路名应该出现的位置
         roadNamePosition(direction, index){
+            // 对不起我数学不好真的不知道怎么写了
             var position = {
                 direc: 'center',
                 offset: [0, 0]
@@ -1287,6 +1363,7 @@ app.component('tab-station', {
             var angle = Math.atan2(dLat, dLng); // / Math.PI * 180;
             var p = Math.PI / 8;
 
+            // 令人迷惑的数值（但是我调了很久）
             if(angle < p && angle > -p){ // 朝东，标下
                 position.direc = 'bottom';
                 position.offset = [0, 2];
@@ -1316,36 +1393,21 @@ app.component('tab-station', {
             return position;
         },
 
-        // setCookies
-        // 保存设置到 cookie
-        setCookies(){
-            $cookies.set("stationSettings", this.settings);
-        },
         // resetSettings
         // 复原设置
         resetSettings(){
-            this.settings = {
-                mainDirection: 0,
-                showStationName: "1",
-                showOpposite: "0.4",
-                mapStyle: "amap://styles/normal",
-                stationLightness: -64,
-                lineStrokeWidth: 6,
-                stationStrokeWidth: 2,
-                stationFillRadius: 5
-            };
-            
-            this.mapItems.labelsLayer.setCollision(parseInt(this.settings.showStationName));
-            this.map.setMapStyle(this.settings.mapStyle);
-            this.setCookies();
-            this.loadMapLine(false);
+            for(const item in this.settings.map){
+                this.settings.map[item].current = this.settings.map[item].default;
+            }
         },
 
         // saveOriginal
         // 保存当前线路文件供撤销
         saveOriginal(){
-            this.originSelectedNode = this.selectedNode;
-            this.$emit('modified');
+            if(this.settings.general.enableUndoFunc.current == "1"){
+                this.originSelectedNode = this.selectedNode;
+                this.$emit('modified');
+            }
         },
         // undo
         // 撤销后重新加载线路文件和选中站点
@@ -1361,7 +1423,7 @@ app.component('tab-station', {
         hotKey(event){
             var e = event || window.event || arguments.callee.caller.arguments[0];
             if(!e){ return; }
-            console.log(e);
+            e.preventDefault();
             if(e.ctrlKey || e.metaKey){
                 switch(e.key){ // 按下 Ctrl 或 Command 时
                     case 'z':
@@ -1445,22 +1507,22 @@ app.component('tab-station', {
                     });
                 }
 
-                if(endStationName && startStationNameDown != endStationName){
+                if(endStationName !== undefined && startStationNameDown != endStationName){
                     endStationName = endStationName + ' / ' + startStationNameDown;
                 }
-                if(startStationName && endStationNameDown != startStationName){
+                if(startStationName !== undefined && endStationNameDown != startStationName){
                     startStationName = startStationName + ' / ' + endStationNameDown;
                 }
-                if(!startStationName){
+                if(startStationName === undefined){
                     startStationName = endStationNameDown;
                 }
-                if(!endStationName){
+                if(endStationName === undefined){
                     endStationName = startStationNameDown;
                 }
             }
         
             // 返回结果
-            if(startStationName && endStationName){
+            if(startStationName !== undefined && endStationName !== undefined){
                 return ('\u2002' + startStationName + (this.isBilateral?" ⇌ ":" ⇀ ") + endStationName);
             }
         },
