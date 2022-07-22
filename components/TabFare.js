@@ -398,7 +398,7 @@ bld.component('tab-fare', {
                         lastStationDown = index;
                     }
                     node.id = index;
-                    node.distance = this.stationDistance('up', index, lastStationDown);
+                    node.distance = this.stationDistance('down', index, lastStationDown);
                     stations.down.push(node);
                 }
             }
