@@ -284,7 +284,7 @@ const bld = Vue.createApp({
             localStorage.setItem('settings', JSON.stringify(this.settings));
         }
 
-        var announcementLastRead = localStorage.getItem('announcementLastRead') ?? 0;
+        var announcementLastRead = localStorage.getItem('announcementLastRead') ? localStorage.getItem('announcementLastRead') : 0;
         if(announcementLastRead < this.announcement.lastUpdated){
             this.showMessage(["公告", "", this.announcement.content, false]);
             localStorage.setItem('announcementLastRead', Date.now());

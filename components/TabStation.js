@@ -466,7 +466,7 @@ bld.component('tab-station', {
         // clickNode
         // 在地图上点击一个节点
         clickNode(e) {
-            if(e.target.getExtData() < 0){
+            if(e.target.getExtData() === null){
                 this.clickPoint(e.lnglat.lng, e.lnglat.lat);
             }else if(this.selectedMapTool == 'watch'){
                 this.selectedNode = e.target.getExtData();
@@ -1021,7 +1021,9 @@ bld.component('tab-station', {
         // appendLineToLineMap
         // 添加当前线路至线网
         appendLineToLineMap(lineFile){
-            lineFile = lineFile ?? this.line;
+            if(!lineFile){
+                lineFile = this.line;
+            }
 
             var newLineOnLineMap = {
                 data: {
@@ -1276,7 +1278,7 @@ bld.component('tab-station', {
                     markers.push(marker);
 
                     if(generateStationName){
-                        var position = this.roadNamePosition(direc, node.id ?? index);
+                        var position = this.roadNamePosition(direc, node.id ? node.id : index);
                         var text = new AMap.LabelMarker({
                             name: node.name,
                             position: new AMap.LngLat(node.lng, node.lat),
@@ -1294,8 +1296,10 @@ bld.component('tab-station', {
                                     strokeColor: 'white',
                                     strokeWidth: 4
                                 }
-                            }
+                            },
+                            extData: null
                         });
+                        text.on('click', this.clickNode, this);
                         labels.push(text);
                     }
                     if(labels.length){
@@ -1318,7 +1322,7 @@ bld.component('tab-station', {
             }else{
                 var prefix = "data:image/svg+xml;base64,";
                 var color = this.colorLightness(color, parseInt(this.settings.map.stationLightness.current));
-                var side = 2 * this.settings.map.stationFillRadius.current + this.settings.map.stationStrokeWidth.current;
+                var side = 2 * parseFloat(this.settings.map.stationFillRadius.current) + parseFloat(this.settings.map.stationStrokeWidth.current);
                 var svg = "<svg xmlns='http://www.w3.org/2000/svg' version='2' width='" + side + "' height='" + side + "'>" + 
                     "<circle cx='" + (side / 2) + "' cy='" + (side / 2) +
                     "' r='" + this.settings.map.stationFillRadius.current + "' stroke='" + color + "' stroke-width='" + this.settings.map.stationStrokeWidth.current + "' " + 
@@ -1423,15 +1427,17 @@ bld.component('tab-station', {
         hotKey(event){
             var e = event || window.event || arguments.callee.caller.arguments[0];
             if(!e){ return; }
-            e.preventDefault();
+            var operated = false;
             if(e.ctrlKey || e.metaKey){
                 switch(e.key){ // 按下 Ctrl 或 Command 时
                     case 'z':
                     case 'Z':
                         this.$emit('undo');
+                        operated = true;
                         break;
                     case '/':
                         this.changeNode();
+                        operated = true;
                         break;
                 }
             }else{
@@ -1443,20 +1449,28 @@ bld.component('tab-station', {
                         }else{
                             this.deleteNode();
                         }
+                        operated = true;
                         break;
                     case '1':
                         this.setMapTool("watch");
+                        operated = true;
                         break;
                     case '2':
                         this.setMapTool("newStationSmart");
+                        operated = true;
                         break;
                     case '3':
                         this.setMapTool("newStation");
+                        operated = true;
                         break;
                     case '4':
                         this.setMapTool("newWaypoint");
+                        operated = true;
                         break;
                 }
+            }
+            if(operated){
+                e.preventDefault();
             }
         }
     },

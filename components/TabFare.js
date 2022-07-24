@@ -247,7 +247,7 @@ bld.component('tab-fare', {
                 table.push(row);
             });
 
-            var name = this.line.lineName ?? '未命名线路';
+            var name = this.line.lineName ? this.line.lineName : '未命名线路';
 
             var workbook = {
                 SheetNames: [name],
@@ -273,7 +273,7 @@ bld.component('tab-fare', {
             });
         },
         downloadImage(blob){
-            var name = this.line.lineName ?? '未命名线路';
+            var name = this.line.lineName ? this.line.lineName : '未命名线路';
             try{
                 if(!blob){
                     throw 'Blob 为空';
