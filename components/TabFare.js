@@ -170,15 +170,27 @@ bld.component('tab-fare', {
         },
         fareCalculate(startStationId, endStationId) {
             if(this.line.fare.strategy != 'single' && this.line.fare.strategy != 'text'){
-                var distance = Math.abs(this.stationsWithDistance[endStationId].distance - this.stationsWithDistance[startStationId].distance);
-
+                var startStation = this.stationsWithDistance[startStationId];
+                var endStation = this.stationsWithDistance[endStationId];
+                var distance;
+                if(startStation.direction == endStation.direction){
+                    distance = Math.abs(startStation.distance - endStation.distance);
+                }else if(startStation.direction == 'up' && endStation.direction == 'down' || startStation.direction == 'down' && endStation.direction == 'up'){
+                    // 不准确，但是本来上行站和下行站之间距离就没意义，所以无所谓了
+                    distance = Math.abs(startStation.distance - endStation.distance);
+                }else if(startStation.direction == 'up' || endStation.direction == 'up'){
+                    distance = Math.abs(startStation.distanceUp - endStation.distanceUp);
+                }else if(startStation.direction == 'down' || endStation.direction == 'down'){
+                    distance = Math.abs(startStation.distanceDown - endStation.distanceDown);
+                }
+                
                 // 环线计算绕一圈距离
                 if(this.isRingLine && this.line.fare.enableRing == "1"){
-                    var ringDistance = Math.abs(this.stationsWithDistance[this.stationsWithDistance.length - 1].distance
-                                       - this.stationsWithDistance[endStationId].distance)
-                                       + this.stationsWithDistance[startStationId].distance;
-                    if(ringDistance < distance){
-                        distance = ringDistance;
+                    if(startStation.direction == endStation.direction || startStation.direction == 'bilateral' || endStation.direction == 'bilateral'){
+                        var ringDistance = Math.abs(this.stationsWithDistance[this.stationsWithDistance.length - 1].distance - endStation.distance) + startStation.distance;
+                        if(ringDistance < distance){
+                            distance = ringDistance;
+                        }
                     }
                 }
 
@@ -404,7 +416,11 @@ bld.component('tab-fare', {
             }
 
             if(!this.isBilateral){
-                stationsOverall = stations.up;
+                stations.up.forEach(station => {
+                    station.distanceUp = station.distance;
+                    station.direction = 'up';
+                    stationsOverall.push(station);
+                });
             }else{
                 var pointerUp = 0, pointerDown = 0;
                 var stationsCountUp = stations.up.length, stationsCountDown = stations.down.length;
@@ -415,7 +431,9 @@ bld.component('tab-fare', {
                         stations.down.slice(pointerDown, stationsCountDown).forEach((station) => {
                             stationsOverall.push({
                                 name: station.name + ' (' + (this.settings.general.mainDirection.current === '0' ? '下行' : '上行') + '单向)',
-                                distance: station.distance
+                                distance: station.distance,
+                                distanceDown: station.distanceDown,
+                                direction: 'down'
                             });
                         });
                         break;
@@ -423,7 +441,9 @@ bld.component('tab-fare', {
                         stations.up.slice(pointerUp, stationsCountUp).forEach((station) => {
                             stationsOverall.push({
                                 name: station.name + ' (' + (this.settings.general.mainDirection.current === '0' ? '上行' : '下行') + '单向)',
-                                distance: station.distance
+                                distance: station.distance,
+                                distanceUp: station.distanceUp,
+                                direction: 'up'
                             });
                         });
                         break;
@@ -433,7 +453,10 @@ bld.component('tab-fare', {
                     if(stationUp.name == stationDown.name){ // 双向站
                         stationsOverall.push({
                             name: stationUp.name,
-                            distance: (stationUp.distance + stationDown.distance)/2
+                            distance: (stationUp.distance + stationDown.distance)/2,
+                            distanceUp: stationUp.distance,
+                            distanceDown: stationDown.distance,
+                            direction: 'bilateral'
                         });
                         pointerUp ++;
                         pointerDown ++;
@@ -444,14 +467,18 @@ bld.component('tab-fare', {
                         if(offset === -1){ // 上行单向
                             stationsOverall.push({
                                 name: stationUp.name + ' (' + (this.settings.general.mainDirection.current === '0' ? '上行' : '下行') + '单向)',
-                                distance: stationUp.distance
+                                distance: stationUp.distance,
+                                distanceUp: stationUp.distance,
+                                direction: 'up'
                             });
                             pointerUp ++;
                         }else{ // pointerDown ~ (pointerDown + offset) 中间夹的是下行单向
                             stations.down.slice(pointerDown, pointerDown + offset).forEach((station) => {
                                 stationsOverall.push({
                                     name: station.name + ' (' + (this.settings.general.mainDirection.current === '0' ? '下行' : '上行') + '单向)',
-                                    distance: station.distance
+                                    distance: station.distance,
+                                    distanceDown: station.distance,
+                                    direction: 'down'
                                 });
                             });
                             pointerDown += offset;
