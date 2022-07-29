@@ -432,7 +432,7 @@ bld.component('tab-fare', {
                             stationsOverall.push({
                                 name: station.name + ' (' + (this.settings.general.mainDirection.current === '0' ? '下行' : '上行') + '单向)',
                                 distance: station.distance,
-                                distanceDown: station.distanceDown,
+                                distanceDown: station.distance,
                                 direction: 'down'
                             });
                         });
@@ -442,7 +442,7 @@ bld.component('tab-fare', {
                             stationsOverall.push({
                                 name: station.name + ' (' + (this.settings.general.mainDirection.current === '0' ? '上行' : '下行') + '单向)',
                                 distance: station.distance,
-                                distanceUp: station.distanceUp,
+                                distanceUp: station.distance,
                                 direction: 'up'
                             });
                         });
