@@ -194,7 +194,7 @@ bld.component('tab-fare', {
                     }
                 }
 
-                distance = Math.ceil(distance * Math.pow(10, 1)) / Math.pow(10, 1);
+                distance = (Math.ceil(distance * Math.pow(10, 1)) / Math.pow(10, 1)).toFixed(1);
             }
 
             switch(this.line.fare.strategy){
