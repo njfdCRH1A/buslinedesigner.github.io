@@ -215,8 +215,8 @@ const bld = Vue.createApp({
                 }
             },
             announcement: {
-                lastUpdated: Date.parse('2022/7/22 16:00:00'),
-                content: 'Bus Line Designer V2 更新啦！更新内容详见↓ https://mp.weixin.qq.com/s/enIH9huxBGnFJwf47siqBg'
+                lastUpdated: Date.parse('2022/11/8 19:20:00'),
+                content: 'Bus Line Designer 已恢复服务，请注意，不得使用 BLD 大量抓取线路数据。'
             },
             lineFile: deepClone(this.blankLineFile),
             originalLineFile: deepClone(this.blankLineFile),
