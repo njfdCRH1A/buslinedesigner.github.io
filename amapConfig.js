@@ -1,4 +1,4 @@
-window.AMapKey = "d6548488a38356cf58bf2ea5e90016c7";
+window.AMapKey = "58f554805b8f627e52635f3b2ee172e4";
 /*
  * window._AMapSecurityConfig = {
  *     serviceHost:'https://your.proxy.domain.here/_AMapService',  
@@ -6,5 +6,5 @@ window.AMapKey = "d6548488a38356cf58bf2ea5e90016c7";
  */
 
 window._AMapSecurityConfig = {
-    securityJsCode:'a50f3fd14cf696518c0eb9cde75ce5fe',
+    securityJsCode:'8a3f1c3c0875539b7bc3073fc8ba170b',
 }
