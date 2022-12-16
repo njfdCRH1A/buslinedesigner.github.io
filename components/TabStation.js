@@ -116,11 +116,6 @@ bld.component('tab-station', {
                 </div>
             </div>
         </div>
-        <div class="alert alert-primary alert-dismissible d-flex align-items-center" role="alert">
-            <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:"><use xlink:href="#info-fill" /></svg>
-            <div>本应用现阶段<b>仅供测试</b>，<b>不保证功能稳定性</b>。如出现问题，请及时向BobLiu反馈。</div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
         <div class="alert alert-primary alert-dismissible d-flex align-items-center" role="alert" v-if="!chrome">
             <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Warning:"><use xlink:href="#info-fill" /></svg>
             <div><span>为保证各项功能正常运行，建议使用 <a href="https://google.cn/chrome/" class="alert-link" target="_blank">Chrome</a> 浏览器。</span></div>

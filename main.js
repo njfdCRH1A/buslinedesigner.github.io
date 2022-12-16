@@ -237,7 +237,7 @@ const bld = Vue.createApp({
                 }
             },
             announcement: {
-                lastUpdated: Date.parse('2022/12/26 21:30:00'),
+                lastUpdated: Date.parse('2022/12/16 21:30:00'),
                 content: 'Bus Line Designer 自动算路 / 站点自动命名 失效了？解决办法详见：https://mp.weixin.qq.com/s/wAgdE5AkqfMvSTfV3tKjTg'
             },
             lineFile: deepClone(this.blankLineFile),
