@@ -17,9 +17,11 @@ bld.component('tab-settings', {
                     <div class="card-body form-control" style="border: 0px;">
                         <div class="mb-3" v-for="(item, index) in settings.general">
                             <label class="form-label" v-text="item.name"></label>
-                            <select class="form-select" v-model="item.current">
+                            <select v-if="item.type == 'select'" class="form-select" v-model="item.current">
                                 <option v-for="(option, index) in item.options" :value="option.value" v-text="option.name"></option>
                             </select>
+                            <input v-if="item.type == 'input'" type="text" class="form-control" autocomplete="off" :placeholder="item.placeholder" v-model.trim.lazy="item.current" />
+                            <p v-if="item.description" v-text="item.description" class="fst-italic fs-6"></p>
                         </div>
                     </div>
                 </div>

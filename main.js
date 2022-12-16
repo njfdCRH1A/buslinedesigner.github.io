@@ -59,6 +59,7 @@ const bld = Vue.createApp({
                         name: '正方向',
                         current: '0',
                         default: '0',
+                        type: 'select',
                         options: [
                             {name: '上行', value: '0'},
                             {name: '下行', value: '1'},
@@ -68,10 +69,19 @@ const bld = Vue.createApp({
                         name: '撤销功能',
                         current: '1',
                         default: '1',
+                        type: 'select',
                         options: [
                             {name: '禁用', value: '0'},
                             {name: '启用', value: '1'},
                         ]
+                    },
+                    customizeKey: {
+                        name: '自定义 Key+安全密钥',
+                        current: '',
+                        default: '',
+                        type: 'input',
+                        placeholder: '留空则使用默认 Key',
+                        description: '使用空格分隔，刷新页面后生效',
                     },
                 },
                 map: {
@@ -79,6 +89,7 @@ const bld = Vue.createApp({
                         name: '在地图上显示站名',
                         current: '1',
                         default: '1',
+                        type: 'select',
                         options: [
                             {name: '不显示', value: '0'},
                             {name: '智能显示 (防碰撞)', value: '1'},
@@ -89,6 +100,7 @@ const bld = Vue.createApp({
                         name: '显示线路反向',
                         current: '0.4',
                         default: '0.4',
+                        type: 'select',
                         options: [
                             {name: '不显示', value: '0'},
                             {name: '半透明显示', value: '0.4'},
@@ -99,6 +111,7 @@ const bld = Vue.createApp({
                         name: '地图风格',
                         current: 'amap://styles/normal',
                         default: 'amap://styles/normal',
+                        type: 'select',
                         options: [
                             {name: '默认', value: 'amap://styles/normal'},
                             {name: '马卡龙', value: 'amap://styles/macaron'},
@@ -115,6 +128,7 @@ const bld = Vue.createApp({
                         name: '线路宽度',
                         current: '6',
                         default: '6',
+                        type: 'select',
                         options: [
                             {name: '细', value: '2'},
                             {name: '较细', value: '4'},
@@ -127,6 +141,7 @@ const bld = Vue.createApp({
                         name: '站点颜色明度',
                         current: '-64',
                         default: '-64',
+                        type: 'select',
                         options: [
                             {name: '黑', value: '-256'},
                             {name: '暗', value: '-64'},
@@ -141,6 +156,7 @@ const bld = Vue.createApp({
                         name: '站点描边宽度',
                         current: '2',
                         default: '2',
+                        type: 'select',
                         options: [
                             {name: '细', value: '1'},
                             {name: '默认', value: '2'},
@@ -152,6 +168,7 @@ const bld = Vue.createApp({
                         name: '站点大小',
                         current: '5',
                         default: '5',
+                        type: 'select',
                         options: [
                             {name: '小', value: '3'},
                             {name: '较小', value: '4'},
@@ -166,6 +183,7 @@ const bld = Vue.createApp({
                         name: '票价精度',
                         current: '2',
                         default: '2',
+                        type: 'select',
                         options: [
                             {name: '整数', value: '0'},
                             {name: '小数点后一位', value: '1'},
@@ -176,6 +194,7 @@ const bld = Vue.createApp({
                         name: "图片保存质量",
                         current: '{"type":"image/png", "quality": 1.0}',
                         default: '{"type":"image/png", "quality": 1.0}',
+                        type: 'select',
                         options: [
                             {name: "PNG 无损", value: '{"type":"image/png", "quality": 1.0}'},
                             {name: "JPG 100%", value: '{"type":"image/jpeg", "quality": 1.0}'},
@@ -189,6 +208,7 @@ const bld = Vue.createApp({
                         name: '多级票价单元格颜色',
                         current: '1',
                         default: '1',
+                        type: 'select',
                         options: [
                             {name: '黑白', value: '0'},
                             {name: '彩色', value: '1'},
@@ -198,6 +218,7 @@ const bld = Vue.createApp({
                         name: '在表格左侧显示站名',
                         current: '0',
                         default: '0',
+                        type: 'select',
                         options: [
                             {name: '不显示', value: '0'},
                             {name: '显示', value: '1'},
@@ -207,6 +228,7 @@ const bld = Vue.createApp({
                         name: '在表格右侧显示站名',
                         current: '1',
                         default: '1',
+                        type: 'select',
                         options: [
                             {name: '不显示', value: '0'},
                             {name: '显示', value: '1'},
@@ -215,8 +237,8 @@ const bld = Vue.createApp({
                 }
             },
             announcement: {
-                lastUpdated: Date.parse('2022/11/8 19:20:00'),
-                content: 'Bus Line Designer 已恢复服务，请注意，不得使用 BLD 大量抓取线路数据。'
+                lastUpdated: Date.parse('2022/12/26 21:30:00'),
+                content: 'Bus Line Designer 自动算路 / 站点自动命名 失效了？解决办法详见：https://mp.weixin.qq.com/s/wAgdE5AkqfMvSTfV3tKjTg'
             },
             lineFile: deepClone(this.blankLineFile),
             originalLineFile: deepClone(this.blankLineFile),
@@ -290,7 +312,18 @@ const bld = Vue.createApp({
             localStorage.setItem('announcementLastRead', Date.now());
         }
 
-        getContents("https://chelaile-forward.herokuapp.com/api.php?api=goocity%2Fcity!morecities.action%3Fsign%3D%26s%3Dandroid%26v%3D%26vc%3D245", this.loadRegions);
+        if (this.settings.general.customizeKey.current) {
+            let config = this.settings.general.customizeKey.current.split(' ');
+            window.AMapKey = config[0];
+            window._AMapSecurityConfig = {
+                securityJsCode: config[1],
+            };
+
+            this.showMessage(["正在使用自定义 Key", "", "如果加载地图出现问题，请检查设置中的自定义 Key 选项", false]);
+        }
+
+        this.$refs.tabStation.mapInit();
+        // getContents("https://chelaile-forward.herokuapp.com/api.php?api=goocity%2Fcity!morecities.action%3Fsign%3D%26s%3Dandroid%26v%3D%26vc%3D245", this.loadRegions);
     },
     methods: {
         setTab(tabId) {
@@ -522,7 +555,7 @@ const bld = Vue.createApp({
         getLineFromChelaileUpRoute(data){
             this.setRouteFromChelaile('up', this.chelaileTempData.stationsUp, JSON.parse(data).jsonr.data);
             if(this.chelaileTempData.lineIdDown){
-               getContents("https://chelaile-forward.herokuapp.com/api.php?api=bus%2Fline!lineDetail.action%3Fsign%3D%26s%3D%26v%3D%26lineName%3D1%26cityId%3D" + this.chelaileTempData.cityId + "%26lineId%3D" + encodeURIComponent(encodeURIComponent(this.chelaileTempData.lineIdDown)), this.getLineFromChelaileDownDetails);
+                getContents("https://chelaile-forward.herokuapp.com/api.php?api=bus%2Fline!lineDetail.action%3Fsign%3D%26s%3D%26v%3D%26lineName%3D1%26cityId%3D" + this.chelaileTempData.cityId + "%26lineId%3D" + encodeURIComponent(encodeURIComponent(this.chelaileTempData.lineIdDown)), this.getLineFromChelaileDownDetails);
             }
             else{
                 this.loadLine();
@@ -717,4 +750,8 @@ const bld = Vue.createApp({
             deep: true
         }
     }
-})
+});
+
+bld.config.errorHandler = (err, vm, info) => {
+    alert(err);
+};
